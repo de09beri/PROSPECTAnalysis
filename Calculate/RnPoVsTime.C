@@ -29,7 +29,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
         vector<double> vPromptPSDCutLow, vDelayPSDCutLow, vPromptEnCutLow, vDelayEnCutLow, vDzCutLow, vDzCutHigh;
 
         ifstream cutFile;
-        cutFile.open("CutParameterVsTime.txt",ifstream::in);
+        cutFile.open("/g/g20/berish1/PROSPECTAnalysis/Calculate/CutParameterVsTime.txt",ifstream::in);
 
         int fileTimebin, fileTimestamp;
         double RnPSD, RnPSDSigma, PoPSD, PoPSDSigma;
@@ -38,10 +38,11 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
         double promptPSDCutLow, delayPSDCutLow, promptEnCutLow, delayEnCutLow, dzCutLow, dzCutHigh;
 
+	if(!cutFile.good()) printf("Cannot find cut parameter file. \n");
+
         string line;
         while(cutFile.good() & !cutFile.eof()){
                 getline(cutFile,line);
-
                 stringstream s(line);
                 s>>fileTimebin>>fileTimestamp>>RnPSD>>RnPSDSigma>>PoPSD>>PoPSDSigma>>RnEn>>RnEnSigma>>PoEn>>PoEnSigma>>RnPoDz>>RnPoDzSigma;
 
@@ -63,6 +64,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
         cutFile.close();
 
+	printf("Finish defining cuts \n");
 
 	//---------------------------------------------------------------------------------
 	const double TIMEBREAK = timeBin*(3.6e6);	//[ms]
@@ -92,6 +94,10 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	vector<double> vLivetime,   vTimestamp;
 	vector<double> vTotLivetime,  vPileupVetoT;
 	vector<double> vPileupVetoFrac;
+	
+	vector<double> vRnPSDCutLow, vRnPSDCutHigh, vRnEnCutLow, vRnEnCutHigh; 
+	vector<double> vPoPSDCutLow, vPoPSDCutHigh, vPoEnCutLow, vPoEnCutHigh; 
+	vector<double> vRnPoDzCutLow, vRnPoDzCutHigh;
 
 	//---------------------------------------------------------------------------------
 	RNPO *rnpo = new RNPO();
@@ -138,10 +144,22 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
                 dzCutLow  = (setDzCutLow > vDzCutLow[numTimeBin])   ? setDzCutLow   : vDzCutLow[numTimeBin];
                 dzCutHigh = (setDzCutHigh < vDzCutHigh[numTimeBin]) ? setDzCutHigh : vDzCutHigh[numTimeBin];
 
+		vRnPSDCutLow.push_back(promptLowPSDCut);
+		vRnPSDCutHigh.push_back(promptHighPSDCut);
+		vPoPSDCutLow.push_back(delayLowPSDCut);
+		vPoPSDCutHigh.push_back(delayHighPSDCut);
+		vRnEnCutLow.push_back(promptLowEnCut);
+		vRnEnCutHigh.push_back(promptHighEnCut);
+		vPoEnCutLow.push_back(delayLowEnCut);
+		vPoEnCutHigh.push_back(delayHighEnCut);
+		vRnPoDzCutLow.push_back(dzCutLow);
+		vRnPoDzCutHigh.push_back(dzCutHigh);
+
+		printf("Initialize histograms \n");
 		//---------------------------------------------------------------------------------
 		//Initialize histograms
-		hSelectDt 		= new TH1F(Form("hSelectDt_%i",numTimeBin),";dt [ms];Counts/0.1 ms",numDtBins,dtMin,dtMax);
-		hBGDt 			= new TH1F(Form("hBGDt_%i",numTimeBin),";dt [ms];Counts/0.1 ms",numDtBins,dtMin,dtMax);
+		hSelectDt 		= new TH1F(Form("hSelectDt_%i",numTimeBin),";dt [ms];Counts/0.05 ms",numDtBins,dtMin,dtMax);
+		hBGDt 			= new TH1F(Form("hBGDt_%i",numTimeBin),";dt [ms];Counts/0.05 ms",numDtBins,dtMin,dtMax);
 	
 		hSelectPromptPSD 	= new TH1F(Form("hSelectPromptPSD_%i",numTimeBin),";PSD [arb];Counts",numPSDBins,PSDMin,PSDMax);	
 		hBGPromptPSD 		= new TH1F(Form("hBGPromptPSD_%i",numTimeBin),";PSD [arb];Counts",numPSDBins,PSDMin,PSDMax);	
@@ -334,7 +352,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		double pileupVetoTime = numClusts*pileupVetoT;	//[ms]
 
 		printf("Time bin: %i  |  Livetime: %f hrs \n",numTimeBin,livetime*(2.778e-7));
-		printf("Pileup veto time: %f \n ms",pileupVetoTime);
+		printf("Pileup veto time: %f hrs \n",pileupVetoTime*(2.778e-7));
 
 		vTotLivetime.push_back(livetime/(1000.0*60.0));		//minutes
 		vPileupVetoT.push_back(pileupVetoTime/(1000.0*60.0));	//minutes
@@ -416,6 +434,19 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	histFile->Write();
 	histFile->WriteObject(&vTimestamp,"vTimestamp");
 	histFile->WriteObject(&vLivetime,"vLivetime");
+	histFile->WriteObject(&vTotLivetime,"vTotLivetime");
+	histFile->WriteObject(&vPileupVetoT,"vPileupVetoTime");
+	histFile->WriteObject(&vPileupVetoFrac,"vPileupVetoFrac");
+	histFile->WriteObject(&vRnPSDCutLow,"vRnPSDCutLow");
+	histFile->WriteObject(&vRnPSDCutHigh,"vRnPSDCutHigh");
+	histFile->WriteObject(&vPoPSDCutLow,"vPoPSDCutLow");
+	histFile->WriteObject(&vPoPSDCutHigh,"vPoPSDCutHigh");
+	histFile->WriteObject(&vRnEnCutLow,"vRnEnCutLow");
+	histFile->WriteObject(&vRnEnCutHigh,"vRnEnCutHigh");
+	histFile->WriteObject(&vPoEnCutLow,"vPoEnCutLow");
+	histFile->WriteObject(&vPoEnCutHigh,"vPoEnCutHigh");
+	histFile->WriteObject(&vRnPoDzCutLow,"vRnPoDzCutLow");
+	histFile->WriteObject(&vRnPoDzCutHigh,"vRnPoDzCutHigh");	
 	histFile->Close();
 
 }	//end void RnPoVsTime

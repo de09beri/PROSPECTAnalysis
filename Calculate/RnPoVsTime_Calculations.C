@@ -1,8 +1,7 @@
 //This macro will create histograms for Ac227 coincidences
 //according to cell number
 
-#include "RNPO.C"
-
+#include "TFile.h"
 #include "TF1.h"
 #include "TH1F.h"
 #include "TH2F.h"
@@ -16,6 +15,8 @@
 #include "TMath.h"
 #include "TLatex.h"
 #include "TVectorD.h"
+#include "TFitResult.h"
+#include "TMatrixD.h"
 
 #include "Header.C"
 
@@ -29,7 +30,40 @@ void RnPoVsTime_Calc(){
 	vector<double> *vL;
 	histFile->GetObject("vLivetime",vL);
 
+	vector<double> *vTotLivetime;
+	histFile->GetObject("vTotLivetime",vTotLivetime);	//minutes
+	vector<double> *vPileupVetoTime;
+	histFile->GetObject("vPileupVetoTime",vPileupVetoTime);	//minutes
+	vector<double> *vPileupVetoFrac;
+	histFile->GetObject("vPileupVetoFrac",vPileupVetoFrac);
+
+	vector<double> *vRnPSDCutLow;
+	histFile->GetObject("vRnPSDCutLow",vRnPSDCutLow);
+	vector<double> *vRnPSDCutHigh;
+	histFile->GetObject("vRnPSDCutHigh",vRnPSDCutHigh);
+
+	vector<double> *vPoPSDCutLow;
+	histFile->GetObject("vPoPSDCutLow",vPoPSDCutLow);
+	vector<double> *vPoPSDCutHigh;
+	histFile->GetObject("vPoPSDCutHigh",vPoPSDCutHigh);
+
+	vector<double> *vRnEnCutLow;
+	histFile->GetObject("vRnEnCutLow",vRnEnCutLow);
+	vector<double> *vRnEnCutHigh;
+	histFile->GetObject("vRnEnCutHigh",vRnEnCutHigh);
+
+	vector<double> *vPoEnCutLow;
+	histFile->GetObject("vPoEnCutLow",vPoEnCutLow);
+	vector<double> *vPoEnCutHigh;
+	histFile->GetObject("vPoEnCutHigh",vPoEnCutHigh);
+	
+	vector<double> *vRnPoDzCutLow;
+	histFile->GetObject("vRnPoDzCutLow",vRnPoDzCutLow);
+	vector<double> *vRnPoDzCutHigh;
+	histFile->GetObject("vRnPoDzCutHigh",vRnPoDzCutHigh);
+
 	//---------------------------------------------------------------------------------
+	TH1F *hBGDt;
 	TH1F *hRnPoDt;
 	TH1F *hRnPSD,	*hPoPSD;
 	TH1F *hRnEn, 	*hPoEn,	 *hRnTotEn, *hPoEnSmear;
@@ -54,9 +88,6 @@ void RnPoVsTime_Calc(){
 	vector<double> vPoPosMean,  vPoPosMeanErr,  vPoPosSigma,  vPoPosSigmaErr;
 	vector<double> vRnPoDzMean, vRnPoDzMeanErr, vRnPoDzSigma, vRnPoDzSigmaErr;
 
-	vector<double> vTotLivetime,  vPileupVetoT;
-	vector<double> vPileupVetoFrac;
-	
 	vector<double> vPromptEnEff,  vPromptEnEffErr,  vDelayEnEff,  vDelayEnEffErr;
 	vector<double> vPromptPSDEff, vPromptPSDEffErr, vDelayPSDEff, vDelayPSDEffErr; 
 	vector<double> vDzEff, 	      vDzEffErr;
@@ -71,19 +102,25 @@ void RnPoVsTime_Calc(){
 
 	double dtBinWidth = (dtMax - dtMin)/(double)numDtBins;
 
+	double promptLowPSDCut, promptHighPSDCut, promptLowEnCut, promptHighEnCut;
+	double delayLowPSDCut, delayHighPSDCut, delayLowEnCut, delayHighEnCut;
+	double dzCutLow, dzCutHigh;
+
 	double promptPSDEff, delayPSDEff, promptPSDEffErr, delayPSDEffErr;
 	double promptEnEff,  delayEnEff,  promptEnEffErr,  delayEnEffErr;
 	double dzEff, dzEffErr;
 	double totEff, totEffErr;
 
-	double NAlpha, NAlphaErr, lifetime, lifetimeErr;
+	double N0, N0Err, lifetime, lifetimeErr;
 	double rate, rateErr;		
+	double BGRate; 
 
 	//int numTimeBins = vLivetime.size();
 	int numTimeBins = vL->size();
 
 	for(int i=0;i<numTimeBins;i++){
 
+		hBGDt   = (TH1F*)histFile->Get(Form("hBGDt_%i",i));
 		hRnPoDt = (TH1F*)histFile->Get(Form("hRnPoDt_%i",i));
 		hRnPSD  = (TH1F*)histFile->Get(Form("hRnPSD_%i",i));
 		hPoPSD  = (TH1F*)histFile->Get(Form("hPoPSD_%i",i));
@@ -95,57 +132,86 @@ void RnPoVsTime_Calc(){
 
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//Fit distributions
-/*
-		TF1 *fPoExp = new TF1("fPoExp",Form("[0]*exp(-x/[1])*(%f/[1])",dtBinWidth),2,4);
-		fPoExp->SetParameter(1,POLIFETIME);
-		hRnPoDt->Fit(fPoExp,"R0");
+		printf("========= Time Bin %d ========= \n",i);
+		printf("Fitting distributions \n");
 
-		fRnPoDtExp = new TF1("fRnPoDtExp",Form("[0]*exp(-x/[1])*(%f/[1]) + [2]*exp(-x/[3])",dtBinWidth),0,8);
-		fRnPoDtExp->SetParameters(5e4,POLIFETIME,3.5e3,0.06);
-		fRnPoDtExp->FixParameter(1,fPoExp->GetParameter(1));
-		fRnPoDtExp->FixParameter(0,fPoExp->GetParameter(0));
-		hRnPoDt->Fit(fRnPoDtExp,"R");
-*/
+		fRnPoDtExp = new TF1("fRnPoDtExp","[0]*exp(-x/[1])",0.5,8);
+                fRnPoDtExp->SetParameter(1,POLIFETIME);
+                TFitResultPtr fitr = hRnPoDt->Fit(fRnPoDtExp,"RS0Q");
+                TMatrixD DtCov = fitr->GetCovarianceMatrix();
 
-		fRnPoDtExp = new TF1("fRnPoDtExp","[0]*exp(-[1]*x) + [2]*exp(-[3]*x)",0,6);
-		fRnPoDtExp->SetParameters(1450,0.385,1950,21);
-		hRnPoDt->Fit(fRnPoDtExp,"R");
+		//-----------------
+		double fitSigma = 3.0;
+                double fitMin, fitMax;
+		
+		//-----------------
+		fitMin = hRnPSD->GetMean() - fitSigma*hRnPSD->GetStdDev();
+                fitMax = hRnPSD->GetMean() + fitSigma*hRnPSD->GetStdDev();
 
+                fRnPSDGaus = new TF1("fRnPSDGaus","gaus",fitMin,fitMax);
+                hRnPSD->Fit(fRnPSDGaus,"R0LQ");
+                fRnPSDGaus->SetRange(PSDMin,PSDMax);
 
-/*		double fitPSDMin = promptLowPSDCut;
-		double maxValue = hRnPSD->GetMaximum(), maxBin = hRnPSD->GetBinCenter(hRnPSD->GetMaximumBin());	
-		fRnPSDGaus = new TF1("fRnPSDGaus","gaus(0)+gaus(3)",fitPSDMin,PSDMax);
-		fRnPSDGaus->SetParameters(0.25*maxValue,maxBin+0.01,0.015,0.75*maxValue,maxBin-0.001,0.02);
-		fRnPSDGaus->SetParLimits(0,0,maxValue);
-		fRnPSDGaus->SetParLimits(3,0,maxValue);
-		hRnPSD->Fit(fRnPSDGaus,"RQ0");
-		fRnPSDGaus->SetRange(PSDMin,PSDMax);
-*/
-		//fitPSDMin = delayLowPSDCut;
-		fPoPSDGaus = new TF1("fPoPSDGaus","gaus",PSDMin,PSDMax);
-		hPoPSD->Fit(fPoPSDGaus,"RQ0");
-		fPoPSDGaus->SetRange(PSDMin,PSDMax);
+		//-----------------
+		fitMin = hPoPSD->GetMean() - fitSigma*hPoPSD->GetStdDev();
+                fitMax = hPoPSD->GetMean() + fitSigma*hPoPSD->GetStdDev();
+
+                fPoPSDGaus = new TF1("fPoPSDGaus","gaus",fitMin,fitMax);
+                hPoPSD->Fit(fPoPSDGaus,"R0LQ");
+                fPoPSDGaus->SetRange(PSDMin,PSDMax);
 	
-/*		double fitRnEnMin = EnMin;	
-		fRnEnGaus = new TF1("fRnEnGaus","gaus(0)+gaus(3)+gaus(6)",fitRnEnMin,EnMax);
-		maxValue = hRnEn->GetMaximum();
-		maxBin = hRnEn->GetBinCenter(hRnEn->GetMaximumBin());	
-		fRnEnGaus->SetParameters(0.8*maxValue,maxBin,0.035,0.05*maxValue,maxBin+0.14,0.08,0.15*maxValue,maxBin-0.03,0.05);
-		hRnEn->Fit(fRnEnGaus,"RQ0");
-		fRnEnGaus->SetRange(EnMin,EnMax);
-*/
-		//double fitPoEnMin = delayLowEnCut;
-		fPoEnGaus = new TF1("fPoEnGaus","gaus",EnMin,EnMax);
-		hPoEn->Fit(fPoEnGaus,"RQ0");
-		fPoEnGaus->SetRange(EnMin,EnMax);
+		//-----------------
+		double maxValue = hRnEn->GetMaximum();
+                double maxBinX = hRnEn->GetBinCenter(hRnEn->GetMaximumBin());
 
-		fRnPoDzGaus = new TF1("fRnPoDzGaus","gaus",dzMin,dzMax);
-		hRnPoDz->Fit(fRnPoDzGaus,"RQ0");
-		fRnPoDzGaus->SetRange(dzMin,dzMax);
+                TF1 *fRnMainGaus = new TF1("fRnMainGaus","gaus",maxBinX-0.05,maxBinX+0.05);
+                hRnEn->Fit(fRnMainGaus,"R0LQ");
+
+                TF1 *fRnGammaGaus = new TF1("fRnGammaGaus","gaus",maxBinX+0.15,maxBinX+0.25);
+                hRnEn->Fit(fRnGammaGaus,"R0LQ");
+
+                double RnGausPar[6];
+                fRnMainGaus->GetParameters(&RnGausPar[0]);
+                fRnGammaGaus->GetParameters(&RnGausPar[3]);
+
+                fitMin = fRnMainGaus->GetParameter(1) - 2.5*fRnMainGaus->GetParameter(2);
+                fitMax = fRnGammaGaus->GetParameter(1) + 2.5*fRnGammaGaus->GetParameter(2);
+
+                fRnEnGaus = new TF1("fRnEnGaus","gaus(0)+gaus(3)",fitMin,fitMax);
+                fRnEnGaus->SetParameters(RnGausPar);
+                hRnEn->Fit(fRnEnGaus,"R0LQ");
+                fRnEnGaus->SetRange(EnMin,EnMax);
+
+		//-----------------
+		fitMin = hPoEn->GetMean() - fitSigma*hPoEn->GetStdDev();
+                fitMax = hPoEn->GetMean() + fitSigma*hPoEn->GetStdDev();
+
+                fPoEnGaus = new TF1("fPoEnGaus","gaus",fitMin,fitMax);
+                hPoEn->Fit(fPoEnGaus,"R0LQ");
+                fPoEnGaus->SetRange(EnMin,EnMax);
+
+		//-----------------
+		fitMin = hRnPoDz->GetMean() - fitSigma*hRnPoDz->GetStdDev();
+                fitMax = hRnPoDz->GetMean() + fitSigma*hRnPoDz->GetStdDev();
+
+                fRnPoDzGaus = new TF1("fRnPoDzGaus","gaus",fitMin,fitMax);
+                hRnPoDz->Fit(fRnPoDzGaus,"R0LQ");
+                fRnPoDzGaus->SetRange(dzMin,dzMax);
+
 
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//Calculate efficiencies
-/*
+		promptLowPSDCut  = vRnPSDCutLow->at(i);
+		promptHighPSDCut = vRnPSDCutHigh->at(i);	
+		delayLowPSDCut   = vPoPSDCutLow->at(i);
+		delayHighPSDCut  = vPoPSDCutHigh->at(i);	
+		promptLowEnCut  = vRnEnCutLow->at(i);
+		promptHighEnCut = vRnEnCutHigh->at(i);	
+		delayLowEnCut   = vPoEnCutLow->at(i);
+		delayHighEnCut  = vPoEnCutHigh->at(i);	
+		dzCutLow  = vRnPoDzCutLow->at(i);
+		dzCutHigh = vRnPoDzCutHigh->at(i);
+
 		promptPSDEff = fRnPSDGaus->Integral(promptLowPSDCut,promptHighPSDCut)/fRnPSDGaus->Integral(PSDMin,PSDMax);
 		promptPSDEffErr = sqrt((promptPSDEff*(1-promptPSDEff))/hRnPSD->GetEntries()); 
 			
@@ -160,37 +226,26 @@ void RnPoVsTime_Calc(){
 
 		dzEff = fRnPoDzGaus->Integral(dzCutLow,dzCutHigh)/fRnPoDzGaus->Integral(dzMin,dzMax);
 		dzEffErr = sqrt((dzEff*(1-dzEff))/hRnPoDz->GetEntries());
-*/
-		promptPSDEff = 1.0;
-		promptPSDEffErr = 0.0;
-		delayPSDEff = 1.0;
-		delayPSDEffErr = 0.0;
-		promptEnEff = 1.0;
-		promptEnEffErr = 0.0;
-		delayEnEff = 1.0;
-		delayEnEffErr = 0.0;
-		dzEff = 1.0;
-		dzEffErr = 0.0;	
 	
-//		totEff = promptPSDEff * delayPSDEff * promptEnEff * delayEnEff * dzEff;	
-//		totEffErr = totEff * sqrt( pow(promptPSDEffErr/promptPSDEff,2) + pow(delayPSDEffErr/delayPSDEff,2) + pow(promptEnEffErr/promptEnEff,2) + pow(delayEnEffErr/delayEnEff,2) + pow(dzEffErr/dzEff,2) );
+		totEff = promptPSDEff * delayPSDEff * promptEnEff * delayEnEff * dzEff;	
+		totEffErr = totEff * sqrt( pow(promptPSDEffErr/promptPSDEff,2) + pow(delayPSDEffErr/delayPSDEff,2) + pow(promptEnEffErr/promptEnEff,2) + pow(delayEnEffErr/delayEnEff,2) + pow(dzEffErr/dzEff,2) );
 
-		totEff = 1.0;
-		totEffErr = 0.0;
 
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//Calculate rate
 		double livetime = vL->at(i);
 
-		NAlpha = (fRnPoDtExp->GetParameter(0)*fRnPoDtExp->GetParameter(1))/dtBinWidth;
-		NAlphaErr = NAlpha*(1/dtBinWidth)*(pow(fRnPoDtExp->GetParError(0)/fRnPoDtExp->GetParameter(0),2) + pow(fRnPoDtExp->GetParError(1)/fRnPoDtExp->GetParameter(1),2));
-		lifetime = log(2)/(double)fRnPoDtExp->GetParameter(1);
-		lifetimeErr = log(2)/(double)fRnPoDtExp->GetParError(1);
-	
-		rate = (NAlpha/(livetime*totEff))*(1e3);		//Hz
-		rateErr = rate * sqrt(pow(NAlphaErr/NAlpha,2) + pow(totEffErr/totEff,2));
+		N0 = fRnPoDtExp->GetParameter(0);
+                N0Err = fRnPoDtExp->GetParError(0);
+                lifetime = fRnPoDtExp->GetParameter(1);
+                lifetimeErr = fRnPoDtExp->GetParError(1);
 
-		printf("Rate: %.4f +/- %.4f \n",rate,rateErr);
+		rate = ((N0*lifetime)/(dtBinWidth*livetime*totEff))*(1e3);      //Hz
+                rateErr = rate * sqrt( pow(N0Err/N0,2) + pow(lifetimeErr/lifetime,2) + 2*DtCov[0][1]/(N0*lifetime) + pow(totEffErr/totEff,2));
+		BGRate = (hBGDt->GetEntries()/livetime)*(1e3);   //Hz
+
+                printf("Rate: %.4f +/- %.4f \n",rate,rateErr);
+
 
 		//---------------------------------------------------------------------------------
 		//Populate vectors
@@ -200,7 +255,8 @@ void RnPoVsTime_Calc(){
 		vTotEffErr.push_back(totEffErr);
 		vLifetime.push_back(lifetime);
 		vLifetimeErr.push_back(lifetimeErr);
-		
+                vBGRate.push_back(BGRate);
+	
 		vPoPSDMean.push_back(fPoPSDGaus->GetParameter(1));	
 		vPoPSDMeanErr.push_back(fPoPSDGaus->GetParError(1));
 		vPoPSDSigma.push_back(fPoPSDGaus->GetParameter(2));
@@ -236,16 +292,13 @@ void RnPoVsTime_Calc(){
 
 		vDtChiSq.push_back(fRnPoDtExp->GetChisquare()/(double)fRnPoDtExp->GetNDF());
 
-/*		vRnPSDChiSq.push_back(fRnPSDGaus->GetChisquare()/(double)fRnPSDGaus->GetNDF());
+		vRnPSDChiSq.push_back(fRnPSDGaus->GetChisquare()/(double)fRnPSDGaus->GetNDF());
 		vPoPSDChiSq.push_back(fPoPSDGaus->GetChisquare()/(double)fPoPSDGaus->GetNDF());
 	
 		vRnEnChiSq.push_back(fRnEnGaus->GetChisquare()/(double)fRnEnGaus->GetNDF());
 		vPoEnChiSq.push_back(fPoEnGaus->GetChisquare()/(double)fPoEnGaus->GetNDF());
 		
 		vDzChiSq.push_back(fRnPoDzGaus->GetChisquare()/(double)fRnPoDzGaus->GetNDF());	
-	
-		vDtChiSq.push_back(fRnPoDtExp->GetChisquare()/(double)fRnPoDtExp->GetNDF());
-*/
 	}	//end while loop 
 
 	histFile->Close();
@@ -253,6 +306,7 @@ void RnPoVsTime_Calc(){
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 	//---------------------------------------------------------------------------------
 	//Initialize TGraphs for results
+	printf("Creating TGraphs \n");
 
 	int numPt = vRate.size();
 	double x[numPt], xErr[numPt];
@@ -270,10 +324,10 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grRnPoDzMean 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grRnPoDzSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 
-//	TGraph *grLivetime 	 = new TGraph(numPt,x,y);
-//	TGraph *grTotLivetime 	 = new TGraph(numPt,x,y);
-//	TGraph *grPileupVeto	 = new TGraph(numPt,x,y);
-//	TGraph *grPileupVetoFrac = new TGraph(numPt,x,y);
+	TGraph *grLivetime 	 = new TGraph(numPt,x,y);
+	TGraph *grTotLivetime 	 = new TGraph(numPt,x,y);
+	TGraph *grPileupVeto	 = new TGraph(numPt,x,y);
+	TGraph *grPileupVetoFrac = new TGraph(numPt,x,y);
 
 	TGraphErrors *grPromptEnEff  = new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grDelayEnEff   = new TGraphErrors(numPt,x,y,xErr,yErr);
@@ -282,23 +336,21 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grDzEff 	     = new TGraphErrors(numPt,x,y,xErr,yErr);
 
 	TGraph *grDtChiSq    = new TGraph(numPt,x,y);
+	TH1F *hDtChiSq 	     = new TH1F("hDtChiSq","dt chisq",20,0.5,1.5);
 
-	TH1F *hDtChiSq = new TH1F("hDtChiSq","dt chisq",20,0.5,1.5);
-
-/*	TGraph *grRnPSDChiSq = new TGraph(numPt,x,y);
+	TGraph *grRnPSDChiSq = new TGraph(numPt,x,y);
 	TGraph *grPoPSDChiSq = new TGraph(numPt,x,y);
 	TGraph *grRnEnChiSq  = new TGraph(numPt,x,y);
 	TGraph *grPoEnChiSq  = new TGraph(numPt,x,y);
 	TGraph *grDzChiSq    = new TGraph(numPt,x,y);
-	TGraph *grDtChiSq    = new TGraph(numPt,x,y);
 
 	TGraph *grBGRate = new TGraph(numPt,x,y);
-*/
+
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//Fill TGraphs
 	for(int i=0;i<numPt;i++){
-		//double time = vTimestamp[i];
 		double time = vT->at(i);
+		printf("Time bin: %d ; Time: %f \n",i,time);
 
 		grRate->SetPoint(i,time,vRate[i]);
 		grRate->SetPointError(i,0,vRateErr[i]);
@@ -333,11 +385,10 @@ void RnPoVsTime_Calc(){
 		grRnPoDzSigma->SetPoint(i,time,vRnPoDzSigma[i]);
 		grRnPoDzSigma->SetPointError(i,0,vRnPoDzSigmaErr[i]);
 
-
-//		grLivetime->SetPoint(i,time,vLivetime[i]);
-//		grTotLivetime->SetPoint(i,time,vTotLivetime[i]);
-//		grPileupVeto->SetPoint(i,time,vPileupVetoT[i]);
-//		grPileupVetoFrac->SetPoint(i,time,vPileupVetoFrac[i]);
+		grLivetime->SetPoint(i,time,vL->at(i));
+		grTotLivetime->SetPoint(i,time,vTotLivetime->at(i));
+		grPileupVeto->SetPoint(i,time,vPileupVetoTime->at(i));
+		grPileupVetoFrac->SetPoint(i,time,vPileupVetoFrac->at(i));
 
 		grPromptEnEff->SetPoint(i,time,vPromptEnEff[i]);
 		grPromptEnEff->SetPointError(i,0,vPromptEnEffErr[i]);
@@ -357,7 +408,6 @@ void RnPoVsTime_Calc(){
 		grDtChiSq->SetPoint(i,time,vDtChiSq[i]);
 		hDtChiSq->Fill(vDtChiSq[i]);
 
-/*		
 		grRnPSDChiSq->SetPoint(i,time,vRnPSDChiSq[i]);
 		grPoPSDChiSq->SetPoint(i,time,vPoPSDChiSq[i]);
 		grRnEnChiSq->SetPoint(i,time,vRnEnChiSq[i]);
@@ -366,7 +416,6 @@ void RnPoVsTime_Calc(){
 		grDtChiSq->SetPoint(i,time,vDtChiSq[i]);
 
 		grBGRate->SetPoint(i,time,vBGRate[i]);
-*/
 	}	//end for loop to populate TGraphs
 
 	//---------------------------------------------------------------------------------
@@ -384,26 +433,23 @@ void RnPoVsTime_Calc(){
 	grPoPosSigma->Write("grPoPosSigma");
 	grRnPoDzMean->Write("grRnPoDzMean");
 	grRnPoDzSigma->Write("grRnPoDzSigma");	
-//	grLivetime->Write("grLivetime");
-//	grTotLivetime->Write("grTotLivetime");
-//	grPileupVeto->Write("grPileupVeto");
-//	grPileupVetoFrac->Write("grPileupVetoFrac");
+	grLivetime->Write("grLivetime");
+	grTotLivetime->Write("grTotLivetime");
+	grPileupVeto->Write("grPileupVeto");
+	grPileupVetoFrac->Write("grPileupVetoFrac");
 	grPromptEnEff->Write("grPromptEnEff");
 	grDelayEnEff->Write("grDelayEnEff");
 	grPromptPSDEff->Write("grPromptPSDEff");
 	grDelayPSDEff->Write("grDelayPSDEff");
 	grDzEff->Write("grDzEff");
-	grDtChiSq->Write("grDtChiSq");
-	hDtChiSq->Write();
-/*
 	grRnPSDChiSq->Write("grRnPSDChiSq");
 	grPoPSDChiSq->Write("grPoPSDChiSq");
 	grRnEnChiSq->Write("grRnEnChiSq");
 	grPoEnChiSq->Write("grPoEnChiSq");
 	grDzChiSq->Write("grDzChiSq");
 	grDtChiSq->Write("grDtChiSq");
+	hDtChiSq->Write();
 	grBGRate->Write("grBGRate");
-*/
 	graphFile->Close();
 
 }	//end void RnPoVsTime

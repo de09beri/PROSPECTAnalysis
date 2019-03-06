@@ -10,19 +10,16 @@
 
 promptPSDStdDev=3.5
 delayPSDStdDev=3.5
-#promptEnStdDev=2.7
-#delayEnStdDev=2.0
 promptEnStdDev=3.5
 delayEnStdDev=3.5
 dzStdDev=3.5
 
-zLow=-444
-zHigh=444
+zLow=-1000
+zHigh=1000
 
 dtCut=0.5
-#timeBin=47.5
-timeBin=1000000
-timeBinCell=335.5
+timeBin=47.5
+#timeBin=1000000
 
 boolESmear=false
 
@@ -102,42 +99,16 @@ EOF
 fi
 
 #==============================================
-# Run RnPoColVsTime and RnPoRunVsTime
-echo ========= Running RnPoCellVsTime =========
+# Run RnPoVsTime
+echo ========= Running RnPoVsTime_Calculations =========
 
 if [ $6 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/RnPoCellVsTime.C+
-RnPoCellVsTime($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $timeBinCell, $dtCut, $boolESmear)
+.L Calculate/RnPoVsTime_Calculations.C+
+RnPoVsTime_Calc()
 .q
 EOF
 
 fi
-
-
-#==============================================
-# Run RnPoColVsTime and RnPoRunVsTime
-
-#if [ $7 -eq 1 ]
-#then
-
-#echo ======= Running RnPoColVsTime =======
-
-#root -l -b <<EOF 
-#.L Calculate/RnPoColVsTime.C+
-#RnPoColVsTime($p_lowPSD,$d_lowPSD,$p_lowE,$d_lowE,$timeBin,$dtFit)
-#.q
-#EOF
-
-#echo ======= Running RnPoRowVsTime =======
-
-#root -l -b <<EOF 
-#.L Calculate/RnPoRowVsTime.C+
-#RnPoRowVsTime($p_lowPSD,$d_lowPSD,$p_lowE,$d_lowE,$timeBin,$dtFit)
-#.q
-#EOF
-
-#fi
-
