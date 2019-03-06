@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<PROSPECT-Analysis>
+    <AnalysisStep code="CAEN_Unpack" compiler="gcc 4.9.3" dtime="2206" git_hash="e5567fe7735ed5c1cc170b4ffd977fdde2740628" git_tag="v16.0-50-ge5567fe" host="borax11" time="1536085055" user="brodsky3">
+        <input file="/g/g19/brodsky3/prospect/P2X_Analysis//PulseCruncher/Config/Unpack_AD1.cfg" md5="f0b0e4937d1e4ceb8939cc7d17aaa00d"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_0_0.dat.gz" md5="9e65560bed2483f007fd01147cabd479"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_0_1.dat.gz" md5="ca295ed687c9ed346f9fec97d9b9cd58"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_0_2.dat.gz" md5="509a4c8590802218b1f8d990ba3114f9"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_0_3.dat.gz" md5="c06b135f9ba3b9cc9e4f73fd089daf67"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_1_0.dat.gz" md5="7ec3554242c6357c49a03605a00a9b56"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_1_1.dat.gz" md5="89b8321cbd0b4ef773e1d1a9ea3dedb2"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_1_2.dat.gz" md5="20f0ea8a5bbc6ced4640892045fc8d2c"/>
+        <input file="/p/lscratchh/psptexp/data//180830_Production/series000/s000_f00000_ts1535661503_1_3.dat.gz" md5="3bf8e8fb6786003f73b2d0d2cf836f89"/>
+        <output file="/p/lscratchh/psptexp/converted/Unpacked/180830_Production/series000/s000_f00000_ts1535661503_Unpacked.root"/>
+    </AnalysisStep>
+    <AnalysisStep code="PulseCruncher" compiler="gcc 4.9.3" dtime="1170" git_hash="e5567fe7735ed5c1cc170b4ffd977fdde2740628" git_tag="v16.0-50-ge5567fe" host="borax13" time="1536135789" user="brodsky3">
+        <input file="/g/g19/brodsky3/prospect/P2X_Analysis//PulseCruncher/Config/Crunch_AD1_Production.cfg" md5="c2c4ca6d68500b9cd8acc48cbb4cc8b6"/>
+        <input file="/p/lscratchh/psptexp/converted/Unpacked/180830_Production/series000/s000_f00000_ts1535661503_Unpacked.root.xml" md5="f26cc68caa28ddc5141e85f318d6faa0"/>
+        <output file="/p/lscratchh/psptexp/converted/Pulse/Pulse_20180503//180830_Production/series000/s000_f00000_ts1535661503_Pulse.h5"/>
+    </AnalysisStep>
+    <AnalysisStep blinded="false" code="ApplyCalibration" compiler="gcc 4.9.3" dtime="322" git_hash="e061297fda0efa28ec13480d0dc9fe4ed90abbea" git_tag="v17.1-8-ge061297" host="borax46" time="1540628499" user="brodsky3">
+        <input file="/p/lscratchh/psptexp/converted/Pulse/Pulse_20180503//180830_Production/series000/s000_f00000_ts1535661503_Pulse.h5.xml" md5="6b85102ecda9cf9f087286055d3ef7cd"/>
+        <output file="/p/lscratchh/psptexp/converted/Phys/Phys_2018C/180830_Production/series000/s000_f00000_ts1535661503_Phys.h5"/>
+        <DetPairCalibrator calName="s000_f00000_ts1535661503" fname="s000_f00000_ts1535661503" ncals="400"/>
+    </AnalysisStep>
+    <AnalysisStep code="AnalyzeCalibrated" compiler="gcc 4.9.3" dtime="45" git_hash="fe19ce0379c75089db62c3c59f004b2c5246e539" git_tag="99973b28faae-70-gfe19ce0" host="borax48" time="1551817773" user="berish1">
+        <input file="/p/lscratchh/psptexp/converted//Phys/Phys_2018C/180830_Production/series000/s000_f00000_ts1535661503_Phys.h5.xml" md5="f266540d5dcd31b8202dbea0a76148cc"/>
+        <output file="/p/lscratchh/psptexp/user/berish1/Analyzed_2018C/180830_Production/series000/s000_f00000_ts1535661503//AD1_Extra_Phys.root"/>
+        <AD1_Extra_Phys calName="s000_f00000_ts1535661503" cluster_dx="20" hwidth="4e+07" ncals="154" resSmear="325" runtime="3599.51" trigThresh="0.09">
+            <RunConfiguration filename="180830_Production/series000/s000_f00000_ts1535661503"/>
+            <Ac227TreePlugin/>
+        </AD1_Extra_Phys>
+    </AnalysisStep>
+</PROSPECT-Analysis>
