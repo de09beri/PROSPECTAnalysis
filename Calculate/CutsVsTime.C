@@ -23,7 +23,7 @@ void CutsVsTime(double dtCut, double timeBin){
 
 	const double TIMEBREAK = timeBin*(3.6e6);	//[ms]
 	
-	ofstream cutFile("/g/g20/berish1/AD_Ac227Analysis/PROSPECTAD_Ac227/Calculate/CutParameterVsTime.txt");
+	ofstream cutFile("/g/g20/berish1/PROSPECTAnalysis/Calculate/CutParameterVsTime.txt");
 
 	//---------------------------------------------------------------------------------
 	TH1F *hSelectPromptPSD, *hBGPromptPSD, *hRnPSD,	 *hSelectDelayPSD, *hBGDelayPSD, *hPoPSD;
@@ -94,11 +94,21 @@ void CutsVsTime(double dtCut, double timeBin){
 		double lastTime = 0.0, lastRunTime = 0.0, lastTimestamp = 0.0;	
 		double sumWeightedTimestamp = 0.0, sumRunTime = 0.0;
 
+		//===============
+		//Variables for keeping track of multiplicity
+		int delay_mult = 0, BGdelay_mult = 0;	
+		int prompt_mult = 0, far_mult = 0;
+		int count_mult = 0;
+		int larger_mult = 0;
+
+		double multDelayEn = 0 , multDelayPSD = 0;
+
 		for(Long64_t i=IDX;i<numEntries;i++){
 			if(i%100000==0) printf("Event: %lld \n",i);
 			rnpo->GetEntry(i);
 
-			if(rnpo->d_t*(1e-6) > ((double)((TVectorD*)rnpo->fChain->GetCurrentFile()->Get("runtime"))->Norm1()*1000.0 - (TIMEWINDOW+TIMEOFFSET)) && i!=(numEntries-1)) continue;
+			if(rnpo->d_t*(1e-6) < (TIMEWINDOW + TIMEOFFSET)) continue;
+
 			//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			//Calculate livetime and weighted timestamp
 			if(rnpo->d_t < lastTime){ 
@@ -139,6 +149,27 @@ void CutsVsTime(double dtCut, double timeBin){
 
 			seg = rnpo->d_seg;
 
+			if(count_mult == larger_mult){ 
+				if(delay_mult>0){
+					hSelectDelayPSD->Fill(multDelayPSD,delay_mult);
+					hSelectDelayEn->Fill(multDelayEn,delay_mult);
+				}
+				if(BGdelay_mult>0){
+					hBGDelayPSD->Fill(multDelayPSD,BGdelay_mult);
+					hBGDelayEn->Fill(multDelayEn,BGdelay_mult);
+				}
+	
+				count_mult=0;
+				delay_mult = 0;
+				BGdelay_mult = 0;
+			}
+
+			prompt_mult = rnpo->p_mult;
+			far_mult = rnpo->f_mult;
+			larger_mult = (prompt_mult > far_mult) ? prompt_mult : far_mult;
+
+			count_mult++;
+
 			double rnpo_p_E = rnpo->p_E;	
 			double rnpo_d_E = rnpo->d_E;
 			double rnpo_f_E = rnpo->f_E;
@@ -150,20 +181,28 @@ void CutsVsTime(double dtCut, double timeBin){
 
 			dt = (rnpo->d_t - rnpo->p_t)*(1e-6);	//convert ns to ms	
 			if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && dt>dtCut){	
+				delay_mult++;
+				multDelayEn = rnpo->d_E;
+				multDelayPSD = rnpo->d_PSD;
+
 				dz = rnpo->d_z - rnpo->p_z;
 				hSelectPromptPSD->Fill(rnpo->p_PSD);
-				hSelectDelayPSD->Fill(rnpo->d_PSD);
+//				hSelectDelayPSD->Fill(rnpo->d_PSD);
 				hSelectPromptEn->Fill(rnpo_p_E);
-				hSelectDelayEn->Fill(rnpo_d_E);
+//				hSelectDelayEn->Fill(rnpo_d_E);
 				hSelectDz->Fill(dz);
 			}
-			dt = (rnpo->f_t - rnpo->d_t)*(1e-6) - TIMEOFFSET;	
+			dt = (rnpo->d_t - rnpo->f_t)*(1e-6) - TIMEOFFSET;	
 			if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && dt>dtCut){	
+				BGdelay_mult++;
+				multDelayEn = rnpo->d_E;
+				multDelayPSD = rnpo->d_PSD;
+
 				dz = rnpo->d_z - rnpo->f_z;
 				hBGPromptPSD->Fill(rnpo->f_PSD);
-				hBGDelayPSD->Fill(rnpo->d_PSD);
+//				hBGDelayPSD->Fill(rnpo->d_PSD);
 				hBGPromptEn->Fill(rnpo_f_E);
-				hBGDelayEn->Fill(rnpo_d_E);
+//				hBGDelayEn->Fill(rnpo_d_E);
 				hBGDz->Fill(dz);
 			}
 

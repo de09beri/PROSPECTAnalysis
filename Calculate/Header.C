@@ -17,7 +17,6 @@ int ExcludeCellArr[NUMEXCLUDECELLS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 
 //Set up bins and ranges for histograms
 double dtMin = 0.0, dtMax = 12.9;	//[ms]
-//int numDtBins = (dtMax - dtMin)/0.1;
 int numDtBins = (dtMax - dtMin)/0.05;
 	
 double PSDMin = 0.15, PSDMax = 0.37;

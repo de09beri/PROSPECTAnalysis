@@ -22,7 +22,7 @@
 
 void CutsPerCell(double dtCut){
 
-	ofstream cutFile("/g/g20/berish1/AD_Ac227Analysis/PROSPECTAD_Ac227/Calculate/CutParameterPerCell.txt");
+	ofstream cutFile("/g/g20/berish1/PROSPECTAnalysis/Calculate/CutParameterPerCell.txt");
 
 	//---------------------------------------------------------------------------------
 	//Initialize histograms for dt, PSD, E, dz, and position
@@ -69,19 +69,24 @@ void CutsPerCell(double dtCut){
 	// Get cut values
 	rnpo->GetEntry(0);
 	tstamp 		 = rnpo->tstamp;
-	//promptLowPSDCut  = rnpo->p_PSDCut[0]; 
-	promptLowPSDCut  = 0.19; 
+	promptLowPSDCut  = rnpo->p_PSDCut[0]; 
 	promptHighPSDCut = rnpo->p_PSDCut[1];
-	//delayLowPSDCut   = rnpo->d_PSDCut[0];
-	delayLowPSDCut   = 0.19;
+	delayLowPSDCut   = rnpo->d_PSDCut[0];
 	delayHighPSDCut  = rnpo->d_PSDCut[1];
 	promptLowEnCut   = rnpo->p_ECut[0];
 	promptHighEnCut  = rnpo->p_ECut[1];
 	delayLowEnCut    = rnpo->d_ECut[0];
 	delayHighEnCut   = rnpo->d_ECut[1];
-	//dzCut            = rnpo->dzCut;
-	dzCut            = 200;
+	dzCut            = rnpo->dzCut;
 
+	//===============
+	//Variables for keeping track of multiplicity
+	int delay_mult = 0, BGdelay_mult = 0;
+        int prompt_mult = 0, far_mult = 0;
+        int count_mult = 0;
+        int larger_mult = 0;
+
+        double multDelayEn = 0 , multDelayPSD = 0;
 
 	//Initialize variables
 	int seg;
@@ -91,9 +96,34 @@ void CutsPerCell(double dtCut){
 		if(i%1000000==0) printf("Event: %lld \n",i);
 		rnpo->GetEntry(i);
 
-		if(rnpo->d_t*(1e-6) > ((double)((TVectorD*)rnpo->fChain->GetCurrentFile()->Get("runtime"))->Norm1()*1000.0 - (TIMEWINDOW+TIMEOFFSET))) continue;
+		if(rnpo->d_t*(1e-6) < (TIMEWINDOW + TIMEOFFSET)) continue;
 
+                //------------------------
+		if(count_mult == larger_mult && i>0){
+                        if(delay_mult>0){
+                                hSelectDelayPSD[seg]->Fill(multDelayPSD,delay_mult);
+                                hSelectDelayEn[seg]->Fill(multDelayEn,delay_mult);
+                        }
+                        if(BGdelay_mult>0){
+                                hBGDelayPSD[seg]->Fill(multDelayPSD,BGdelay_mult);
+                                hBGDelayEn[seg]->Fill(multDelayEn,BGdelay_mult);
+                        }
+
+                        count_mult=0;
+                        delay_mult = 0;
+                        BGdelay_mult = 0;
+                }
+
+                prompt_mult = rnpo->p_mult;
+                far_mult = rnpo->f_mult;
+                larger_mult = (prompt_mult > far_mult) ? prompt_mult : far_mult;
+
+                count_mult++;
+
+                //------------------------
 		seg = rnpo->d_seg;
+		exclude = find(begin(ExcludeCellArr), end(ExcludeCellArr), seg) != end(ExcludeCellArr);
+		if(exclude) continue;
 
 		double rnpo_p_E = rnpo->p_E;	
 		double rnpo_d_E = rnpo->d_E;
@@ -101,14 +131,14 @@ void CutsPerCell(double dtCut){
 
 		if(rnpo->d_PSD < delayLowPSDCut || rnpo->d_E < delayLowEnCut) continue;
 
-		exclude = find(begin(ExcludeCellArr), end(ExcludeCellArr), seg) != end(ExcludeCellArr);
-		if(exclude) continue;
-
-
 		//if prompt-delay pair
 		dt = (rnpo->d_t - rnpo->p_t)*(1e-6);	//convert ns to ms	
 		dz = rnpo->d_z - rnpo->p_z;
-		if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && dt>dtCut && rnpo->p_z>-500 && rnpo->p_z<500 && abs(dz)<dzCut){
+		if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && dt>dtCut){
+			delay_mult++;
+                        multDelayEn = rnpo->d_E;
+                        multDelayPSD = rnpo->d_PSD;
+
 			dz = rnpo->d_z - rnpo->p_z;
 			hSelectPromptPSD[seg]->Fill(rnpo->p_PSD);
 			hSelectDelayPSD[seg]->Fill(rnpo->d_PSD);
@@ -118,9 +148,13 @@ void CutsPerCell(double dtCut){
 		}
 
 		//if prompt-delay BG pair
-		dt = (rnpo->f_t - rnpo->d_t)*(1e-6) - TIMEOFFSET;
+		dt = (rnpo->d_t - rnpo->f_t)*(1e-6) - TIMEOFFSET;
 		dz = rnpo->d_z - rnpo->f_z;
-		if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && dt>dtCut && rnpo->f_z>-500 && rnpo->f_z<500 && abs(dz)<dzCut){
+		if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && dt>dtCut){
+			BGdelay_mult++;
+                        multDelayEn = rnpo->d_E;
+                        multDelayPSD = rnpo->d_PSD;
+
 			dz = rnpo->d_z - rnpo->f_z;
 			hBGPromptPSD[seg]->Fill(rnpo->f_PSD);
 			hBGDelayPSD[seg]->Fill(rnpo->d_PSD);

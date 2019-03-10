@@ -215,12 +215,14 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		int larger_mult = 0;
 
 		double multDelayEn = 0 , multDelayPSD = 0;
+		double multDelayEnSmear = 0;
 
 		for(Long64_t i=IDX;i<numEntries;i++){
 			if(i%100000==0) printf("Event: %lld \n",i);
 			rnpo->GetEntry(i);
 
-			if(rnpo->d_t*(1e-6) > ((double)((TVectorD*)rnpo->fChain->GetCurrentFile()->Get("runtime"))->Norm1()*1000.0 - (TIMEWINDOW+TIMEOFFSET)) && i!=(numEntries-1)) continue;
+			if(rnpo->d_t*(1e-6) < (TIMEWINDOW + TIMEOFFSET)) continue;
+
 			//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 			//Calculate livetime and weighted timestamp
 			if(rnpo->d_t < lastTime){ 
@@ -273,10 +275,12 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 				if(delay_mult>0){
 					hSelectDelayPSD->Fill(multDelayPSD,delay_mult);
 					hSelectDelayEn->Fill(multDelayEn,delay_mult);
+					hSelectDelayEnSmear->Fill(multDelayEnSmear,delay_mult);
 				}
 				if(BGdelay_mult>0){
 					hBGDelayPSD->Fill(multDelayPSD,BGdelay_mult);
 					hBGDelayEn->Fill(multDelayEn,BGdelay_mult);
+					hBGDelayEnSmear->Fill(multDelayEnSmear,BGdelay_mult);
 				}
 	
 				count_mult=0;
@@ -290,6 +294,9 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
 			count_mult++;
 
+			exclude = find(begin(ExcludeCellArr), end(ExcludeCellArr), seg) != end(ExcludeCellArr);
+			if(exclude) continue;
+
 			if(rnpo->d_PSD < delayLowPSDCut || rnpo->d_E < delayLowEnCut) continue;	
 			if(rnpo->d_z < zLow || rnpo->d_z > zHigh) continue;
 
@@ -298,6 +305,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 			if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && rnpo->p_z>zLow && rnpo->p_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh){	
 				delay_mult++;
 				multDelayEn = rnpo->d_E;
+				multDelayEnSmear = rnpo->d_ESmear;
 				multDelayPSD = rnpo->d_PSD;
 
 				dt = (rnpo->d_t - rnpo->p_t)*(1e-6);	//convert ns to ms	
@@ -308,7 +316,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 //				hSelectDelayPSD->Fill(rnpo->d_PSD);
 				hSelectPromptEn->Fill(rnpo->p_E);
 //				hSelectDelayEn->Fill(rnpo->d_E);
-				hSelectDelayEnSmear->Fill(rnpo->d_ESmear);
+//				hSelectDelayEnSmear->Fill(rnpo->d_ESmear);
 				hSelectPromptTotEn->Fill(rnpo->p_Etot);	
 				hSelectPromptPos->Fill(rnpo->p_z);
 				hSelectDelayPos->Fill(rnpo->d_z);
@@ -319,14 +327,15 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 				hSelectDelayEnvsPromptEn->Fill(rnpo->p_E,rnpo->d_E);		
 			}
 
-			dt = (rnpo->f_t - rnpo->d_t)*(1e-6) - TIMEOFFSET;	
+			dt = (rnpo->d_t - rnpo->f_t)*(1e-6) - TIMEOFFSET;	
 			dz = rnpo->d_z - rnpo->f_z;
 			if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && rnpo->f_z>zLow && rnpo->f_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh){	
 				BGdelay_mult++;
 				multDelayEn = rnpo->d_E;
 				multDelayPSD = rnpo->d_PSD;
+				multDelayEnSmear = rnpo->d_ESmear;
 
-				dt = (rnpo->f_t - rnpo->d_t)*(1e-6) - TIMEOFFSET;	
+				dt = (rnpo->d_t - rnpo->f_t)*(1e-6) - TIMEOFFSET;	
 				dz = rnpo->d_z - rnpo->f_z;
 
 				hBGDt->Fill(dt);
@@ -334,7 +343,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 //				hBGDelayPSD->Fill(rnpo->d_PSD);
 				hBGPromptEn->Fill(rnpo->f_E);
 //				hBGDelayEn->Fill(rnpo->d_E);
-				hBGDelayEnSmear->Fill(rnpo->d_ESmear);
+//				hBGDelayEnSmear->Fill(rnpo->d_ESmear);
 				hBGPromptTotEn->Fill(rnpo->f_Etot);	
 				hBGPromptPos->Fill(rnpo->f_z);
 				hBGDelayPos->Fill(rnpo->d_z);

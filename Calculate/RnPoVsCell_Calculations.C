@@ -22,20 +22,10 @@
 
 void RnPoVsTime_Calc(){
 	//---------------------------------------------------------------------------------
-	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerTime.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"UPDATE");
-
-	vector<double> *vT;
-	histFile->GetObject("vTimestamp",vT);
+	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerCell.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"UPDATE");
 
 	vector<double> *vL;
 	histFile->GetObject("vLivetime",vL);
-
-	vector<double> *vTotLivetime;
-	histFile->GetObject("vTotLivetime",vTotLivetime);	//minutes
-	vector<double> *vPileupVetoTime;
-	histFile->GetObject("vPileupVetoTime",vPileupVetoTime);	//minutes
-	vector<double> *vPileupVetoFrac;
-	histFile->GetObject("vPileupVetoFrac",vPileupVetoFrac);
 
 	vector<double> *vRnPSDCutLow;
 	histFile->GetObject("vRnPSDCutLow",vRnPSDCutLow);
@@ -80,6 +70,7 @@ void RnPoVsTime_Calc(){
 	TF1 *fRnPoDzGaus;
 
 	//---------------------------------------------------------------------------------
+	vector<double> vSeg;
 	vector<double> vRate,   vRateErr;
 	vector<double> vTotEff, vTotEffErr;
 	vector<double> vLifetime,   vLifetimeErr;
@@ -115,9 +106,13 @@ void RnPoVsTime_Calc(){
 	double rate, rateErr;		
 	double BGRate; 
 
-	int numTimeBins = vL->size();
+	bool exclude;
 
-	for(int i=0;i<numTimeBins;i++){
+	for(int i=0;i<NUMCELLS;i++){
+		if(i%10==0) printf("Cell: %d \n",i);
+		
+		exclude = find(begin(ExcludeCellArr), end(ExcludeCellArr), i) != end(ExcludeCellArr);
+                if(exclude) continue;
 
 		hBGDt   = (TH1F*)histFile->Get(Form("hBGDt_%i",i));
 		hRnPoDt = (TH1F*)histFile->Get(Form("hRnPoDt_%i",i));
@@ -245,6 +240,7 @@ void RnPoVsTime_Calc(){
 
 		//---------------------------------------------------------------------------------
 		//Populate vectors
+		vSeg.push_back(i);
 		vRate.push_back(rate);
 		vRateErr.push_back(rateErr);
 		vTotEff.push_back(totEff);
@@ -303,9 +299,9 @@ void RnPoVsTime_Calc(){
 	//Initialize TGraphs for results
 	printf("Creating TGraphs \n");
 
-	int numPt = vRate.size();
-	double x[numPt], xErr[numPt];
-	double y[1], yErr[1];
+	int numPt = NUMCELLS - NUMEXCLUDECELLS;
+        double x[numPt], xErr[numPt];
+        double y[1], yErr[1];
 
 	TGraphErrors *grRate 		= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grTotEff 		= new TGraphErrors(numPt,x,y,xErr,yErr);
@@ -320,9 +316,6 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grRnPoDzSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 
 	TGraph *grLivetime 	 = new TGraph(numPt,x,y);
-	TGraph *grTotLivetime 	 = new TGraph(numPt,x,y);
-	TGraph *grPileupVeto	 = new TGraph(numPt,x,y);
-	TGraph *grPileupVetoFrac = new TGraph(numPt,x,y);
 
 	TGraphErrors *grPromptEnEff  = new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grDelayEnEff   = new TGraphErrors(numPt,x,y,xErr,yErr);
@@ -344,77 +337,74 @@ void RnPoVsTime_Calc(){
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//Fill TGraphs
 	for(int i=0;i<numPt;i++){
-		double time = vT->at(i);
+		double seg = vSeg[i];
 
-		grRate->SetPoint(i,time,vRate[i]);
+		grRate->SetPoint(i,seg,vRate[i]);
 		grRate->SetPointError(i,0,vRateErr[i]);
 
-		grTotEff->SetPoint(i,time,vTotEff[i]);
+		grTotEff->SetPoint(i,seg,vTotEff[i]);
 		grTotEff->SetPointError(i,0,vTotEffErr[i]);
 
-		grLifetime->SetPoint(i,time,vLifetime[i]);
+		grLifetime->SetPoint(i,seg,vLifetime[i]);
 		grLifetime->SetPointError(i,0,vLifetimeErr[i]);
 
-		grPoPSDMean->SetPoint(i,time,vPoPSDMean[i]);
+		grPoPSDMean->SetPoint(i,seg,vPoPSDMean[i]);
 		grPoPSDMean->SetPointError(i,0,vPoPSDMeanErr[i]);
 
-		grPoPSDSigma->SetPoint(i,time,vPoPSDSigma[i]);
+		grPoPSDSigma->SetPoint(i,seg,vPoPSDSigma[i]);
 		grPoPSDSigma->SetPointError(i,0,vPoPSDSigmaErr[i]);
 
-		grPoEnMean->SetPoint(i,time,vPoEnMean[i]);
+		grPoEnMean->SetPoint(i,seg,vPoEnMean[i]);
 		grPoEnMean->SetPointError(i,0,vPoEnMeanErr[i]);
 	
-		grPoEnSigma->SetPoint(i,time,vPoEnSigma[i]);
+		grPoEnSigma->SetPoint(i,seg,vPoEnSigma[i]);
 		grPoEnSigma->SetPointError(i,0,vPoEnSigmaErr[i]);
 
-		grPoPosMean->SetPoint(i,time,vPoPosMean[i]);
+		grPoPosMean->SetPoint(i,seg,vPoPosMean[i]);
 		grPoPosMean->SetPointError(i,0,vPoPosMeanErr[i]);
 
-		grPoPosSigma->SetPoint(i,time,vPoPosSigma[i]);
+		grPoPosSigma->SetPoint(i,seg,vPoPosSigma[i]);
 		grPoPosSigma->SetPointError(i,0,vPoPosSigmaErr[i]);		
 
-		grRnPoDzMean->SetPoint(i,time,vRnPoDzMean[i]);
+		grRnPoDzMean->SetPoint(i,seg,vRnPoDzMean[i]);
 		grRnPoDzMean->SetPointError(i,0,vRnPoDzMeanErr[i]);
 
-		grRnPoDzSigma->SetPoint(i,time,vRnPoDzSigma[i]);
+		grRnPoDzSigma->SetPoint(i,seg,vRnPoDzSigma[i]);
 		grRnPoDzSigma->SetPointError(i,0,vRnPoDzSigmaErr[i]);
 
-		grLivetime->SetPoint(i,time,vL->at(i));
-		grTotLivetime->SetPoint(i,time,vTotLivetime->at(i));
-		grPileupVeto->SetPoint(i,time,vPileupVetoTime->at(i));
-		grPileupVetoFrac->SetPoint(i,time,vPileupVetoFrac->at(i));
+		grLivetime->SetPoint(i,seg,vL->at(i));
 
-		grPromptEnEff->SetPoint(i,time,vPromptEnEff[i]);
+		grPromptEnEff->SetPoint(i,seg,vPromptEnEff[i]);
 		grPromptEnEff->SetPointError(i,0,vPromptEnEffErr[i]);
 
-		grDelayEnEff->SetPoint(i,time,vDelayEnEff[i]);
+		grDelayEnEff->SetPoint(i,seg,vDelayEnEff[i]);
 		grDelayEnEff->SetPointError(i,0,vDelayEnEffErr[i]);
 
-		grPromptPSDEff->SetPoint(i,time,vPromptPSDEff[i]);
+		grPromptPSDEff->SetPoint(i,seg,vPromptPSDEff[i]);
 		grPromptPSDEff->SetPointError(i,0,vPromptPSDEffErr[i]);
 
-		grDelayPSDEff->SetPoint(i,time,vDelayPSDEff[i]);
+		grDelayPSDEff->SetPoint(i,seg,vDelayPSDEff[i]);
 		grDelayPSDEff->SetPointError(i,0,vDelayPSDEffErr[i]);
 
-		grDzEff->SetPoint(i,time,vDzEff[i]);
+		grDzEff->SetPoint(i,seg,vDzEff[i]);
 		grDzEff->SetPointError(i,0,vDzEffErr[i]);	
 
-		grDtChiSq->SetPoint(i,time,vDtChiSq[i]);
+		grDtChiSq->SetPoint(i,seg,vDtChiSq[i]);
 		hDtChiSq->Fill(vDtChiSq[i]);
 
-		grRnPSDChiSq->SetPoint(i,time,vRnPSDChiSq[i]);
-		grPoPSDChiSq->SetPoint(i,time,vPoPSDChiSq[i]);
-		grRnEnChiSq->SetPoint(i,time,vRnEnChiSq[i]);
-		grPoEnChiSq->SetPoint(i,time,vPoEnChiSq[i]);
-		grDzChiSq->SetPoint(i,time,vDzChiSq[i]);
-		grDtChiSq->SetPoint(i,time,vDtChiSq[i]);
+		grRnPSDChiSq->SetPoint(i,seg,vRnPSDChiSq[i]);
+		grPoPSDChiSq->SetPoint(i,seg,vPoPSDChiSq[i]);
+		grRnEnChiSq->SetPoint(i,seg,vRnEnChiSq[i]);
+		grPoEnChiSq->SetPoint(i,seg,vPoEnChiSq[i]);
+		grDzChiSq->SetPoint(i,seg,vDzChiSq[i]);
+		grDtChiSq->SetPoint(i,seg,vDtChiSq[i]);
 
-		grBGRate->SetPoint(i,time,vBGRate[i]);
+		grBGRate->SetPoint(i,seg,vBGRate[i]);
 	}	//end for loop to populate TGraphs
 
 	//---------------------------------------------------------------------------------
 	//Write TGraphs to file
-	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerTime.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
+	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerCell.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
 	
 	grRate->Write("grRate");
 	grTotEff->Write("grTotEff");	
@@ -428,9 +418,6 @@ void RnPoVsTime_Calc(){
 	grRnPoDzMean->Write("grRnPoDzMean");
 	grRnPoDzSigma->Write("grRnPoDzSigma");	
 	grLivetime->Write("grLivetime");
-	grTotLivetime->Write("grTotLivetime");
-	grPileupVeto->Write("grPileupVeto");
-	grPileupVetoFrac->Write("grPileupVetoFrac");
 	grPromptEnEff->Write("grPromptEnEff");
 	grDelayEnEff->Write("grDelayEnEff");
 	grPromptPSDEff->Write("grPromptPSDEff");
