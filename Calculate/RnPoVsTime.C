@@ -134,6 +134,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
 	Long64_t IDX = 0;
 	int numTimeBin = 0;
+	int timebreak = 0;
 	while(IDX<numEntries){
 
 		promptLowPSDCut = (setPromptLowPSDCut > vPromptPSDCutLow[numTimeBin]) ? setPromptLowPSDCut : vPromptPSDCutLow[numTimeBin];
@@ -234,7 +235,8 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 				numClusts += lastNumClusts;
 			}
 
-			if(livetime>TIMEBREAK){
+			if(livetime>TIMEBREAK || (rnpo->tstamp==1524021346 && timebreak==0 && timeBin<1000)){
+				if(rnpo->tstamp==1524021346) timebreak=1;
 
 				tstamp = sumWeightedTimestamp/sumRunTime;
 				vTimestamp.push_back(tstamp);	
@@ -253,7 +255,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 				livetime += lastTime*(1e-6);
 
 				//if livetime is less than 12 hours 
-				if(livetime*(2.778e-7) < 12) goto endloop;
+				//if(livetime*(2.778e-7) < 12) goto endloop;
 
 				sumWeightedTimestamp += lastRunTime * ((lastRunTime/2.0)+lastTimestamp);
 				sumRunTime += lastRunTime;

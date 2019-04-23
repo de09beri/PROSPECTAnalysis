@@ -64,6 +64,7 @@ void CutsVsTime(double dtCut, double timeBin){
 
 	Long64_t IDX = 0;
 	int numTimeBin = 0;
+	int timebreak = 0;
 	while(IDX<numEntries){
 
 		//---------------------------------------------------------------------------------
@@ -118,7 +119,8 @@ void CutsVsTime(double dtCut, double timeBin){
 				sumRunTime += lastRunTime;
 			}
 
-			if(livetime>TIMEBREAK){
+			if(livetime>TIMEBREAK || (rnpo->tstamp==1524021346 && timebreak==0 && timeBin<1000)){
+				if(rnpo->tstamp==1524021346) timebreak=1;
 				tstamp = sumWeightedTimestamp/sumRunTime;
 
 				IDX = i;
@@ -134,7 +136,7 @@ void CutsVsTime(double dtCut, double timeBin){
 				livetime += lastTime*(1e-6);
 
 				//if livetime is less than 12 hours 
-				if(livetime*(2.778e-7) < 12) goto endloop;
+				//if(livetime*(2.778e-7) < 12) goto endloop;
 
 				sumWeightedTimestamp += lastRunTime * ((lastRunTime/2.0)+lastTimestamp);
 				sumRunTime += lastRunTime;

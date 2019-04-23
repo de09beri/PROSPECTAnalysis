@@ -8,20 +8,22 @@
 # $5: Run RnPoColVsTime.C and RnPoRowVsTime.C
 
 
-promptPSDStdDev=3.5
-delayPSDStdDev=3.5
-promptEnStdDev=3.5
-delayEnStdDev=3.5
-dzStdDev=3.5
+promptPSDStdDev=4.0
+delayPSDStdDev=4.0
+promptEnStdDev=4.0
+delayEnStdDev=4.0
+dzStdDev=4.0
 
 zLow=-1000
 zHigh=1000
 
 dtCut=0.5
 timeBin=47.5
-#timeBin=1000000
+#timeBin=1000000000
 
 boolESmear=false
+
+outputName=35Sigma
 
 #==============================================
 # Make Class
@@ -62,7 +64,22 @@ if [ $3 -eq 1 ]
 then
 root -l -b <<EOF 
 .L Calculate/RnPoVsCell.C+
-RnPoVsCell($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $dtCut, $boolESmear)
+RnPoVsCell($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $dtCut, $boolESmear, $outputName)
+.q
+EOF
+
+fi
+
+#==============================================
+# Run RnPoVsTime
+echo ========= Running RnPoVsCell_Calculations =========
+
+if [ $4 -eq 1 ]
+then
+
+root -l -b <<EOF 
+.L Calculate/RnPoVsCell_Calculations.C+
+RnPoVsCell_Calc($outputName)
 .q
 EOF
 
@@ -72,7 +89,7 @@ fi
 # Make list of cut parameters versus time
 echo ========= Running CutsVsTime =========
 
-if [ $4 -eq 1 ]
+if [ $5 -eq 1 ]
 then
 
 root -l -b <<EOF 
@@ -87,7 +104,7 @@ fi
 # Run RnPoVsTime
 echo ========= Running RnPoVsTime =========
 
-if [ $5 -eq 1 ]
+if [ $6 -eq 1 ]
 then
 
 root -l -b <<EOF 
@@ -102,7 +119,7 @@ fi
 # Run RnPoVsTime
 echo ========= Running RnPoVsTime_Calculations =========
 
-if [ $6 -eq 1 ]
+if [ $7 -eq 1 ]
 then
 
 root -l -b <<EOF 

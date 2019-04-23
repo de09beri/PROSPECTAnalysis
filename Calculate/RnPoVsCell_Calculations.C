@@ -20,9 +20,9 @@
 
 #include "Header.C"
 
-void RnPoVsTime_Calc(){
+void RnPoVsCell_Calc(string outputName){
 	//---------------------------------------------------------------------------------
-	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerCell.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"UPDATE");
+	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerCell_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"UPDATE");
 
 	vector<double> *vL;
 	histFile->GetObject("vLivetime",vL);
@@ -66,7 +66,7 @@ void RnPoVsTime_Calc(){
 	//---------------------------------------------------------------------------------
 	TF1 *fRnPoDtExp;
 	TF1 *fRnPSDGaus, *fPoPSDGaus;
-	TF1 *fRnEnGaus,  *fPoEnGaus;
+	TF1 *fRnEnGaus,  *fPoEnGaus, *fPoEnSmearGaus;
 	TF1 *fRnPoDzGaus;
 
 	//---------------------------------------------------------------------------------
@@ -76,6 +76,7 @@ void RnPoVsTime_Calc(){
 	vector<double> vLifetime,   vLifetimeErr;
 	vector<double> vPoPSDMean,  vPoPSDMeanErr,  vPoPSDSigma,  vPoPSDSigmaErr;
 	vector<double> vPoEnMean,   vPoEnMeanErr,   vPoEnSigma,   vPoEnSigmaErr;
+	vector<double> vPoEnSmearMean,   vPoEnSmearMeanErr,   vPoEnSmearSigma,   vPoEnSmearSigmaErr;
 	vector<double> vPoPosMean,  vPoPosMeanErr,  vPoPosSigma,  vPoPosSigmaErr;
 	vector<double> vRnPoDzMean, vRnPoDzMeanErr, vRnPoDzSigma, vRnPoDzSigmaErr;
 
@@ -120,13 +121,14 @@ void RnPoVsTime_Calc(){
 		hPoPSD  = (TH1F*)histFile->Get(Form("hPoPSD_%i",i));
 		hRnEn   = (TH1F*)histFile->Get(Form("hRnEn_%i",i));
 		hPoEn   = (TH1F*)histFile->Get(Form("hPoEn_%i",i));
+		hPoEnSmear   = (TH1F*)histFile->Get(Form("hPoEnSmear_%i",i));
 		hRnPoDz = (TH1F*)histFile->Get(Form("hRnPoDz_%i",i));
 
 		hPoPos   = (TH1F*)histFile->Get(Form("hPoPos_%i",i));
 
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//Fit distributions
-		printf("========= Time Bin %d ========= \n",i);
+		printf("========= Cell %d ========= \n",i);
 		printf("Fitting distributions \n");
 
 		fRnPoDtExp = new TF1("fRnPoDtExp","[0]*exp(-x/[1])",0.5,8);
@@ -181,6 +183,16 @@ void RnPoVsTime_Calc(){
 		hPoEn->Write(Form("hPoEn_%i",i),TObject::kOverwrite);
 
 		//-----------------
+		fitMin = hPoEnSmear->GetMean() - fitSigma*hPoEnSmear->GetStdDev();
+                fitMax = hPoEnSmear->GetMean() + fitSigma*hPoEnSmear->GetStdDev();
+
+                fPoEnSmearGaus = new TF1("fPoEnSmearGaus","gaus",fitMin,fitMax);
+                hPoEnSmear->Fit(fPoEnSmearGaus,"R0LQ");
+                fPoEnSmearGaus->SetRange(EnMin,EnMax);
+
+		hPoEnSmear->Write(Form("hPoEnSmear_%i",i),TObject::kOverwrite);
+
+		//-----------------
 		fitMin = hRnPoDz->GetMean() - fitSigma*hRnPoDz->GetStdDev();
                 fitMax = hRnPoDz->GetMean() + fitSigma*hRnPoDz->GetStdDev();
 
@@ -203,6 +215,12 @@ void RnPoVsTime_Calc(){
 		dzCutLow  = vRnPoDzCutLow->at(i);
 		dzCutHigh = vRnPoDzCutHigh->at(i);
 
+		printf("%f < Rn PSD < %f \n",promptLowPSDCut,promptHighPSDCut);
+		printf("%f < Po PSD < %f \n",delayLowPSDCut,delayHighPSDCut);
+		printf("%f < Rn En < %f \n",promptLowEnCut,promptHighEnCut);
+		printf("%f < Po En < %f \n",delayLowEnCut,delayHighEnCut);
+		printf("%f < RnPo Dz < %f \n",dzCutLow,dzCutHigh);	
+
 		promptPSDEff = fRnPSDGaus->Integral(promptLowPSDCut,promptHighPSDCut)/fRnPSDGaus->Integral(PSDMin,PSDMax);
 		promptPSDEffErr = sqrt((promptPSDEff*(1-promptPSDEff))/hRnPSD->GetEntries()); 
 			
@@ -221,22 +239,22 @@ void RnPoVsTime_Calc(){
 		totEff = promptPSDEff * delayPSDEff * promptEnEff * delayEnEff * dzEff;	
 		totEffErr = totEff * sqrt( pow(promptPSDEffErr/promptPSDEff,2) + pow(delayPSDEffErr/delayPSDEff,2) + pow(promptEnEffErr/promptEnEff,2) + pow(delayEnEffErr/delayEnEff,2) + pow(dzEffErr/dzEff,2) );
 
+		printf("Efficiency: %f +/- %f \n",totEff,totEffErr);
 
 		//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 		//Calculate rate
-		double livetime = vL->at(i);
+		double livetime = vL->at(0);
 
 		N0 = fRnPoDtExp->GetParameter(0);
                 N0Err = fRnPoDtExp->GetParError(0);
                 lifetime = fRnPoDtExp->GetParameter(1);
                 lifetimeErr = fRnPoDtExp->GetParError(1);
 
-		rate = ((N0*lifetime)/(dtBinWidth*livetime*totEff))*(1e3);      //Hz
+		rate = ((N0*lifetime)/(dtBinWidth*livetime*totEff))*(1e6);      //mHz
                 rateErr = rate * sqrt( pow(N0Err/N0,2) + pow(lifetimeErr/lifetime,2) + 2*DtCov[0][1]/(N0*lifetime) + pow(totEffErr/totEff,2));
-		BGRate = (hBGDt->GetEntries()/livetime)*(1e3);   //Hz
+		BGRate = (hBGDt->GetEntries()/livetime)*(1e6);   //Hz
 
                 printf("Rate: %.4f +/- %.4f \n",rate,rateErr);
-
 
 		//---------------------------------------------------------------------------------
 		//Populate vectors
@@ -258,6 +276,11 @@ void RnPoVsTime_Calc(){
 		vPoEnMeanErr.push_back(fPoEnGaus->GetParError(1));
 		vPoEnSigma.push_back(fPoEnGaus->GetParameter(2));
 		vPoEnSigmaErr.push_back(fPoEnGaus->GetParError(2));
+
+		vPoEnSmearMean.push_back(fPoEnSmearGaus->GetParameter(1));
+		vPoEnSmearMeanErr.push_back(fPoEnSmearGaus->GetParError(1));
+		vPoEnSmearSigma.push_back(fPoEnSmearGaus->GetParameter(2));
+		vPoEnSmearSigmaErr.push_back(fPoEnSmearGaus->GetParError(2));
 
 		vPoPosMean.push_back(hPoPos->GetMean());
 		vPoPosMeanErr.push_back(hPoPos->GetMeanError());
@@ -310,12 +333,12 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grPoPSDSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoEnMean   	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoEnSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
+	TGraphErrors *grPoEnSmearMean   = new TGraphErrors(numPt,x,y,xErr,yErr);
+	TGraphErrors *grPoEnSmearSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoPosMean 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoPosSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grRnPoDzMean 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grRnPoDzSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
-
-	TGraph *grLivetime 	 = new TGraph(numPt,x,y);
 
 	TGraphErrors *grPromptEnEff  = new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grDelayEnEff   = new TGraphErrors(numPt,x,y,xErr,yErr);
@@ -324,7 +347,6 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grDzEff 	     = new TGraphErrors(numPt,x,y,xErr,yErr);
 
 	TGraph *grDtChiSq    = new TGraph(numPt,x,y);
-	TH1F *hDtChiSq 	     = new TH1F("hDtChiSq","dt chisq",20,0.5,1.5);
 
 	TGraph *grRnPSDChiSq = new TGraph(numPt,x,y);
 	TGraph *grPoPSDChiSq = new TGraph(numPt,x,y);
@@ -334,6 +356,11 @@ void RnPoVsTime_Calc(){
 
 	TGraph *grBGRate = new TGraph(numPt,x,y);
 
+	//-------------------
+	TH1F *hRate = new TH1F("hRate","Rate",20,3.14,3.34);
+	TH1F *hDtChiSq = new TH1F("hDtChiSq","dt chisq",20,0.5,1.5);
+
+
 	//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	//Fill TGraphs
 	for(int i=0;i<numPt;i++){
@@ -341,6 +368,8 @@ void RnPoVsTime_Calc(){
 
 		grRate->SetPoint(i,seg,vRate[i]);
 		grRate->SetPointError(i,0,vRateErr[i]);
+
+		hRate->Fill(vRate[i]);
 
 		grTotEff->SetPoint(i,seg,vTotEff[i]);
 		grTotEff->SetPointError(i,0,vTotEffErr[i]);
@@ -360,6 +389,12 @@ void RnPoVsTime_Calc(){
 		grPoEnSigma->SetPoint(i,seg,vPoEnSigma[i]);
 		grPoEnSigma->SetPointError(i,0,vPoEnSigmaErr[i]);
 
+		grPoEnSmearMean->SetPoint(i,seg,vPoEnSmearMean[i]);
+		grPoEnSmearMean->SetPointError(i,0,vPoEnSmearMeanErr[i]);
+	
+		grPoEnSmearSigma->SetPoint(i,seg,vPoEnSmearSigma[i]);
+		grPoEnSmearSigma->SetPointError(i,0,vPoEnSmearSigmaErr[i]);
+
 		grPoPosMean->SetPoint(i,seg,vPoPosMean[i]);
 		grPoPosMean->SetPointError(i,0,vPoPosMeanErr[i]);
 
@@ -371,8 +406,6 @@ void RnPoVsTime_Calc(){
 
 		grRnPoDzSigma->SetPoint(i,seg,vRnPoDzSigma[i]);
 		grRnPoDzSigma->SetPointError(i,0,vRnPoDzSigmaErr[i]);
-
-		grLivetime->SetPoint(i,seg,vL->at(i));
 
 		grPromptEnEff->SetPoint(i,seg,vPromptEnEff[i]);
 		grPromptEnEff->SetPointError(i,0,vPromptEnEffErr[i]);
@@ -404,7 +437,7 @@ void RnPoVsTime_Calc(){
 
 	//---------------------------------------------------------------------------------
 	//Write TGraphs to file
-	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerCell.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
+	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerCell_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"RECREATE");
 	
 	grRate->Write("grRate");
 	grTotEff->Write("grTotEff");	
@@ -413,11 +446,12 @@ void RnPoVsTime_Calc(){
 	grPoPSDSigma->Write("grPoPSDSigma");
 	grPoEnMean->Write("grPoEnMean");
 	grPoEnSigma->Write("grPoEnSigma");
+	grPoEnSmearMean->Write("grPoEnSmearMean");
+	grPoEnSmearSigma->Write("grPoEnSmearSigma");
 	grPoPosMean->Write("grPoPosMean");
 	grPoPosSigma->Write("grPoPosSigma");
 	grRnPoDzMean->Write("grRnPoDzMean");
 	grRnPoDzSigma->Write("grRnPoDzSigma");	
-	grLivetime->Write("grLivetime");
 	grPromptEnEff->Write("grPromptEnEff");
 	grDelayEnEff->Write("grDelayEnEff");
 	grPromptPSDEff->Write("grPromptPSDEff");
@@ -429,8 +463,9 @@ void RnPoVsTime_Calc(){
 	grPoEnChiSq->Write("grPoEnChiSq");
 	grDzChiSq->Write("grDzChiSq");
 	grDtChiSq->Write("grDtChiSq");
-	hDtChiSq->Write();
 	grBGRate->Write("grBGRate");
+	hDtChiSq->Write();
+	hRate->Write();
 	graphFile->Close();
 
 }	//end void RnPoVsTime

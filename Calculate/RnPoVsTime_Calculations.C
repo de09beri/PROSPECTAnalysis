@@ -76,7 +76,7 @@ void RnPoVsTime_Calc(){
 	//---------------------------------------------------------------------------------
 	TF1 *fRnPoDtExp;
 	TF1 *fRnPSDGaus, *fPoPSDGaus;
-	TF1 *fRnEnGaus,  *fPoEnGaus;
+	TF1 *fRnEnGaus,  *fPoEnGaus, *fPoEnSmearGaus;
 	TF1 *fRnPoDzGaus;
 
 	//---------------------------------------------------------------------------------
@@ -85,6 +85,7 @@ void RnPoVsTime_Calc(){
 	vector<double> vLifetime,   vLifetimeErr;
 	vector<double> vPoPSDMean,  vPoPSDMeanErr,  vPoPSDSigma,  vPoPSDSigmaErr;
 	vector<double> vPoEnMean,   vPoEnMeanErr,   vPoEnSigma,   vPoEnSigmaErr;
+	vector<double> vPoEnSmearMean, vPoEnSmearMeanErr, vPoEnSmearSigma, vPoEnSmearSigmaErr;
 	vector<double> vPoPosMean,  vPoPosMeanErr,  vPoPosSigma,  vPoPosSigmaErr;
 	vector<double> vRnPoDzMean, vRnPoDzMeanErr, vRnPoDzSigma, vRnPoDzSigmaErr;
 
@@ -125,6 +126,7 @@ void RnPoVsTime_Calc(){
 		hPoPSD  = (TH1F*)histFile->Get(Form("hPoPSD_%i",i));
 		hRnEn   = (TH1F*)histFile->Get(Form("hRnEn_%i",i));
 		hPoEn   = (TH1F*)histFile->Get(Form("hPoEn_%i",i));
+		hPoEnSmear   = (TH1F*)histFile->Get(Form("hPoEnSmear_%i",i));
 		hRnPoDz = (TH1F*)histFile->Get(Form("hRnPoDz_%i",i));
 
 		hPoPos   = (TH1F*)histFile->Get(Form("hPoPos_%i",i));
@@ -184,6 +186,16 @@ void RnPoVsTime_Calc(){
                 fPoEnGaus->SetRange(EnMin,EnMax);
 
 		hPoEn->Write(Form("hPoEn_%i",i),TObject::kOverwrite);
+
+		//-----------------
+		fitMin = hPoEnSmear->GetMean() - fitSigma*hPoEnSmear->GetStdDev();
+                fitMax = hPoEnSmear->GetMean() + fitSigma*hPoEnSmear->GetStdDev();
+
+                fPoEnSmearGaus = new TF1("fPoEnSmearGaus","gaus",fitMin,fitMax);
+                hPoEnSmear->Fit(fPoEnSmearGaus,"R0LQ");
+                fPoEnSmearGaus->SetRange(EnMin,EnMax);
+
+		hPoEnSmear->Write(Form("hPoEnSmear_%i",i),TObject::kOverwrite);
 
 		//-----------------
 		fitMin = hRnPoDz->GetMean() - fitSigma*hRnPoDz->GetStdDev();
@@ -263,6 +275,11 @@ void RnPoVsTime_Calc(){
 		vPoEnSigma.push_back(fPoEnGaus->GetParameter(2));
 		vPoEnSigmaErr.push_back(fPoEnGaus->GetParError(2));
 
+		vPoEnSmearMean.push_back(fPoEnSmearGaus->GetParameter(1));
+		vPoEnSmearMeanErr.push_back(fPoEnSmearGaus->GetParError(1));
+		vPoEnSmearSigma.push_back(fPoEnSmearGaus->GetParameter(2));
+		vPoEnSmearSigmaErr.push_back(fPoEnSmearGaus->GetParError(2));
+
 		vPoPosMean.push_back(hPoPos->GetMean());
 		vPoPosMeanErr.push_back(hPoPos->GetMeanError());
 		vPoPosSigma.push_back(hPoPos->GetRMS());
@@ -314,6 +331,8 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grPoPSDSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoEnMean   	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoEnSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
+	TGraphErrors *grPoEnSmearMean   = new TGraphErrors(numPt,x,y,xErr,yErr);
+	TGraphErrors *grPoEnSmearSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoPosMean 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grPoPosSigma 	= new TGraphErrors(numPt,x,y,xErr,yErr);
 	TGraphErrors *grRnPoDzMean 	= new TGraphErrors(numPt,x,y,xErr,yErr);
@@ -331,7 +350,6 @@ void RnPoVsTime_Calc(){
 	TGraphErrors *grDzEff 	     = new TGraphErrors(numPt,x,y,xErr,yErr);
 
 	TGraph *grDtChiSq    = new TGraph(numPt,x,y);
-	TH1F *hDtChiSq 	     = new TH1F("hDtChiSq","dt chisq",20,0.5,1.5);
 
 	TGraph *grRnPSDChiSq = new TGraph(numPt,x,y);
 	TGraph *grPoPSDChiSq = new TGraph(numPt,x,y);
@@ -367,6 +385,12 @@ void RnPoVsTime_Calc(){
 		grPoEnSigma->SetPoint(i,time,vPoEnSigma[i]);
 		grPoEnSigma->SetPointError(i,0,vPoEnSigmaErr[i]);
 
+		grPoEnSmearMean->SetPoint(i,time,vPoEnSmearMean[i]);
+		grPoEnSmearMean->SetPointError(i,0,vPoEnSmearMeanErr[i]);
+	
+		grPoEnSmearSigma->SetPoint(i,time,vPoEnSmearSigma[i]);
+		grPoEnSmearSigma->SetPointError(i,0,vPoEnSmearSigmaErr[i]);
+
 		grPoPosMean->SetPoint(i,time,vPoPosMean[i]);
 		grPoPosMean->SetPointError(i,0,vPoPosMeanErr[i]);
 
@@ -400,7 +424,6 @@ void RnPoVsTime_Calc(){
 		grDzEff->SetPointError(i,0,vDzEffErr[i]);	
 
 		grDtChiSq->SetPoint(i,time,vDtChiSq[i]);
-		hDtChiSq->Fill(vDtChiSq[i]);
 
 		grRnPSDChiSq->SetPoint(i,time,vRnPSDChiSq[i]);
 		grPoPSDChiSq->SetPoint(i,time,vPoPSDChiSq[i]);
@@ -423,6 +446,8 @@ void RnPoVsTime_Calc(){
 	grPoPSDSigma->Write("grPoPSDSigma");
 	grPoEnMean->Write("grPoEnMean");
 	grPoEnSigma->Write("grPoEnSigma");
+	grPoEnSmearMean->Write("grPoEnSmearMean");
+	grPoEnSmearSigma->Write("grPoEnSmearSigma");
 	grPoPosMean->Write("grPoPosMean");
 	grPoPosSigma->Write("grPoPosSigma");
 	grRnPoDzMean->Write("grRnPoDzMean");
@@ -442,7 +467,6 @@ void RnPoVsTime_Calc(){
 	grPoEnChiSq->Write("grPoEnChiSq");
 	grDzChiSq->Write("grDzChiSq");
 	grDtChiSq->Write("grDtChiSq");
-	hDtChiSq->Write();
 	grBGRate->Write("grBGRate");
 	graphFile->Close();
 

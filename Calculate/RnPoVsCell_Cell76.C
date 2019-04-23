@@ -19,16 +19,14 @@
 
 #include "Header.C"
 
-void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnStdDev, double delayEnStdDev, double dzStdDev, double zLow, double zHigh, double dtCut, bool boolESmear, string outputName){
+void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnStdDev, double delayEnStdDev, double dzStdDev, double zLow, double zHigh, double dtCut, bool boolESmear){
 	RNPO *rnpo = new RNPO();
 
 	double setPromptLowPSDCut, setDelayLowPSDCut;
-	double setPromptHighPSDCut, setDelayHighPSDCut;
         double setPromptLowEnCut,  setDelayLowEnCut;
         double setDzCutLow, setDzCutHigh;
 
 	double calcPromptLowPSDCut, calcDelayLowPSDCut;
-	double calcPromptHighPSDCut, calcDelayHighPSDCut;
         double calcPromptLowEnCut,  calcDelayLowEnCut;
         double calcDzCutLow, calcDzCutHigh;
 
@@ -39,9 +37,9 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	// Get cut values
 	rnpo->GetEntry(0);
 	setPromptLowPSDCut  = rnpo->p_PSDCut[0]; 
-	setPromptHighPSDCut = rnpo->p_PSDCut[1];
+	promptHighPSDCut    = rnpo->p_PSDCut[1];
 	setDelayLowPSDCut   = rnpo->d_PSDCut[0];
-	setDelayHighPSDCut  = rnpo->d_PSDCut[1];
+	delayHighPSDCut     = rnpo->d_PSDCut[1];
 	setPromptLowEnCut   = rnpo->p_ECut[0];
 	promptHighEnCut     = rnpo->p_ECut[1];
 	setDelayLowEnCut    = rnpo->d_ECut[0];
@@ -73,8 +71,6 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
                 calcPromptLowPSDCut = RnPSD - (promptPSDStdDev*RnPSDSigma);
                 calcDelayLowPSDCut  = PoPSD - (delayPSDStdDev*PoPSDSigma);
-                calcPromptHighPSDCut = RnPSD + (promptPSDStdDev*RnPSDSigma);
-                calcDelayHighPSDCut  = PoPSD + (delayPSDStdDev*PoPSDSigma);
                 calcPromptLowEnCut  = RnEn  - (promptEnStdDev*RnEnSigma);
                 calcDelayLowEnCut   = PoEn  - (delayEnStdDev*PoEnSigma);
                 calcDzCutLow        = RnPoDz - (dzStdDev*RnPoDzSigma);
@@ -83,8 +79,6 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
 		promptLowPSDCut = (setPromptLowPSDCut > calcPromptLowPSDCut) ? setPromptLowPSDCut : calcPromptLowPSDCut;
                 delayLowPSDCut  = (setDelayLowPSDCut  > calcDelayLowPSDCut)  ? setDelayLowPSDCut  : calcDelayLowPSDCut;
-		promptHighPSDCut = (setPromptHighPSDCut < calcPromptHighPSDCut) ? setPromptHighPSDCut : calcPromptHighPSDCut;
-                delayHighPSDCut  = (setDelayHighPSDCut  < calcDelayHighPSDCut)  ? setDelayHighPSDCut  : calcDelayHighPSDCut;
                 promptLowEnCut  = (setPromptLowEnCut  > calcPromptLowEnCut)  ? setPromptLowEnCut  : calcPromptLowEnCut;
                 delayLowEnCut   = (setDelayLowEnCut   > calcDelayLowEnCut)   ? setDelayLowEnCut   : calcDelayLowEnCut;
 
@@ -108,7 +102,7 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
         cutFile.close();
         //---------------------------------------------------------------------------------
 
-	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerCell_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"RECREATE");
+	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerCell76.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
 
 	//---------------------------------------------------------------------------------
 	//Initialize histograms for dt, PSD, E, dz, and position
@@ -150,11 +144,11 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		hSelectPromptPos[i] 	= new TH1F(Form("hSelectPromptPos_%i",i),";z [mm];Counts/cm",numPosBins,posMin,posMax);
 		hBGPromptPos[i] 	= new TH1F(Form("hBGPromptPos_%i",i),";z [mm];Counts/cm",numPosBins,posMin,posMax);
 
-		hSelectDelayPos[i] 	= new TH1F(Form("hSelectDelayPos_%i",i),";z [mm];Counts/cm",numPosBins,posMin,posMax);
-		hBGDelayPos[i] 		= new TH1F(Form("hBGDelayPos_%i",i),";z [mm];Counts/cm",numPosBins,posMin,posMax);
+		hSelectDelayPos[i] 	= new TH1F(Form("hSelectDelayPos_%i",i),";z [mm];Counts/cm",160,-800,800);
+		hBGDelayPos[i] 		= new TH1F(Form("hBGDelayPos_%i",i),";z [mm];Counts/cm",160,-800,800);
 
-		hSelectDz[i]		= new TH1F(Form("hSelectDz_%i",i),";z_{Po} - z_{Rn} [mm];Counts/0.25 cm",numDzBins,dzMin,dzMax);
-		hBGDz[i]		= new TH1F(Form("hBGDz_%i",i),";z_{Po} - z_{Rn} [mm];Counts/0.25 cm",numDzBins,dzMin,dzMax);
+		hSelectDz[i]		= new TH1F(Form("hSelectDz_%i",i),";z_{Po} - z_{Rn} [mm];Counts/0.25 cm",160,-200,200);
+		hBGDz[i]		= new TH1F(Form("hBGDz_%i",i),";z_{Po} - z_{Rn} [mm];Counts/0.25 cm",160,-200,200);
 
 		hSelectPromptTotEn[i] 	= new TH1F(Form("hSelectPromptTotEn_%i",i),";Energy [MeVee];Counts/5 keV",numEnBins,EnMin,EnMax);
 		hBGPromptTotEn[i] 	= new TH1F(Form("hBGPromptTotEn_%i",i),";Energy [MeVee];Counts/5 keV",numEnBins,EnMin,EnMax);
@@ -182,8 +176,6 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	//Fill histograms
 	printf("=============== Filling Histograms =============== \n"); 
 
-//	RNPO *rnpo = new RNPO();
-	
 	bool exclude;
 	Long64_t numEntries = Long64_t(rnpo->fChain->GetEntries());
 	printf("Number of Ac-227 candidates: %lld \n",numEntries);
@@ -191,30 +183,6 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	double tstamp;
 	rnpo->GetEntry(0);
 	tstamp 		    = rnpo->tstamp;
-
-/*	double setPromptLowPSDCut, setDelayLowPSDCut;
-        double setPromptLowEnCut,  setDelayLowEnCut;
-        double setDzCutLow, setDzCutHigh;
-
-	double promptLowPSDCut, promptHighPSDCut, promptLowEnCut, promptHighEnCut;
-	double delayLowPSDCut,  delayHighPSDCut,  delayLowEnCut,  delayHighEnCut;
-	double dzCut, dzLowCut, dzHighCut;
-
-	// Get cut values
-	rnpo->GetEntry(0);
-	tstamp 		    = rnpo->tstamp;
-	setPromptLowPSDCut  = rnpo->p_PSDCut[0]; 
-	promptHighPSDCut    = rnpo->p_PSDCut[1];
-	setDelayLowPSDCut   = rnpo->d_PSDCut[0];
-	delayHighPSDCut     = rnpo->d_PSDCut[1];
-	setPromptLowEnCut   = rnpo->p_ECut[0];
-	promptHighEnCut     = rnpo->p_ECut[1];
-	setDelayLowEnCut    = rnpo->d_ECut[0];
-	delayHighEnCut      = rnpo->d_ECut[1];
-	dzCut               = rnpo->dzCut;
-	setDzLowCut  = -1.0*dzCut;
-	setDzHighCut = dzCut;
-*/
 
 	//Initialize variables
 	int seg;
@@ -251,7 +219,7 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		lastNumClusts = rnpo->numClust;
 		lastRuntime = ((TVectorD*)rnpo->fChain->GetCurrentFile()->Get("runtime"))->Norm1();	//[s]	
 
-		//------------------------
+/*		//------------------------
 		if(count_mult == larger_mult && i>0){
                 	if(delay_mult>0){
                         	hSelectDelayPSD[seg]->Fill(multDelayPSD,delay_mult);
@@ -274,7 +242,7 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
         	larger_mult = (prompt_mult > far_mult) ? prompt_mult : far_mult;
 
         	count_mult++;
-
+*/
 		//------------------------
 		seg = rnpo->d_seg;
 
@@ -295,7 +263,7 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		//if prompt-delay pair
 		dt = (rnpo->d_t - rnpo->p_t)*(1e-6);	//convert ns to ms	
 		dz = rnpo->d_z - rnpo->p_z;
-		if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && rnpo->p_z>zLow && rnpo->p_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh){
+		if(rnpo->p_seg > -1 && rnpo->p_PSD>promptLowPSDCut && rnpo->p_E>promptLowEnCut && rnpo->p_z>zLow && rnpo->p_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh && rnpo->p_mult==1){
 			delay_mult++;
                         multDelayEn = rnpo->d_E;
                         multDelayEnSmear = rnpo->d_ESmear;
@@ -306,10 +274,10 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
 			hSelectDt[seg]->Fill(dt);
 			hSelectPromptPSD[seg]->Fill(rnpo->p_PSD);
-//			hSelectDelayPSD[seg]->Fill(rnpo->d_PSD);
+			hSelectDelayPSD[seg]->Fill(rnpo->d_PSD);
 			hSelectPromptEn[seg]->Fill(rnpo->p_E);
-//			hSelectDelayEn[seg]->Fill(rnpo->d_E);
-//			hSelectDelayEnSmear[seg]->Fill(rnpo->d_ESmear);
+			hSelectDelayEn[seg]->Fill(rnpo->d_E);
+			hSelectDelayEnSmear[seg]->Fill(rnpo->d_ESmear);
 			hSelectPromptTotEn[seg]->Fill(rnpo->p_Etot);	
 			hSelectPromptPos[seg]->Fill(rnpo->p_z);
 			hSelectDelayPos[seg]->Fill(rnpo->d_z);
@@ -327,7 +295,7 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 		//if prompt-delay BG pair
 		dt = (rnpo->d_t - rnpo->f_t)*(1e-6) - TIMEOFFSET;
 		dz = rnpo->d_z - rnpo->f_z;
-		if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && rnpo->f_z>zLow && rnpo->f_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh){
+		if(rnpo->f_seg > -1 && rnpo->f_PSD>promptLowPSDCut && rnpo->f_E>promptLowEnCut && rnpo->f_z>zLow && rnpo->f_z<zHigh && dt>dtCut && dz>dzCutLow && dz<dzCutHigh && rnpo->f_mult==1){
 			BGdelay_mult++;
                         multDelayEn = rnpo->d_E;
                         multDelayEnSmear = rnpo->d_ESmear;
@@ -338,10 +306,10 @@ void RnPoVsCell(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 
 			hBGDt[seg]->Fill(dt);
 			hBGPromptPSD[seg]->Fill(rnpo->f_PSD);
-//			hBGDelayPSD[seg]->Fill(rnpo->d_PSD);
+			hBGDelayPSD[seg]->Fill(rnpo->d_PSD);
 			hBGPromptEn[seg]->Fill(rnpo->f_E);
-//			hBGDelayEn[seg]->Fill(rnpo->d_E);
-//			hBGDelayEnSmear[seg]->Fill(rnpo->d_ESmear);
+			hBGDelayEn[seg]->Fill(rnpo->d_E);
+			hBGDelayEnSmear[seg]->Fill(rnpo->d_ESmear);
 			hBGPromptTotEn[seg]->Fill(rnpo->f_Etot);
 			hBGPromptPos[seg]->Fill(rnpo->f_z);
 			hBGDelayPos[seg]->Fill(rnpo->d_z);
