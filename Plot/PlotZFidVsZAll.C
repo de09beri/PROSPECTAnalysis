@@ -159,7 +159,7 @@ int PlotZFidVsZAll(){
 	TGraphErrors *grETTotEff_z = makeETGr(grTotEff_z);	
 
 	//-----------------------
-	TFile *fzFid = new TFile(Form("%s/Ac227_GraphsPerCell_zFid.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"))); 
+	TFile *fzFid = new TFile(Form("%s/Ac227_GraphsPerCell_PozFid.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"))); 
 	if(!fzFid){
 		printf("Graph file not found. Exiting. \n");
 		return -1;
@@ -173,15 +173,68 @@ int PlotZFidVsZAll(){
 	TGraphErrors *grTotEff_zFid = (TGraphErrors*)fzFid->Get("grTotEff");
 	TGraphErrors *grETTotEff_zFid = makeETGr(grTotEff_zFid);	
 
-		
+	//--------------------	
 	TGraphErrors *grResid = makeResidGr(grRelRate_z,grRelRate_zFid);
 	TGraphErrors *grETResid = makeETGr(grResid);
 
-	TGraphErrors *grNoETRelRate_z = makeNoETGr(grRelRate_z);
-	TGraphErrors *grNoETRelRate_zFid = makeNoETGr(grRelRate_zFid);
-	TGraphErrors *grNoETResid = makeNoETGr(grResid);
+	TGraphErrors *grNoETRate_z = makeNoETGr(grRate_z);
+	TGraphErrors *grNoETRate_zFid = makeNoETGr(grRate_zFid);
+	TGraphErrors *grNoETRelRate_z = makeRelGr(grNoETRate_z);
+	TGraphErrors *grNoETRelRate_zFid = makeRelGr(grNoETRate_zFid);
+
+	TGraphErrors *grNoETResid = makeResidGr(grNoETRelRate_z,grNoETRelRate_zFid);
 
 	//-----------------------
+	double grx, gry;
+
+	TH1F *hNoETRelRate_z = new TH1F("hNoETRelRate_z",";R_{i}/#LTR#GT;Counts",40,0.96,1.03);
+	for(int i=0;i<grNoETRelRate_z->GetN();i++){
+		grNoETRelRate_z->GetPoint(i,grx,gry);
+		hNoETRelRate_z->Fill(gry);
+	}
+
+	TH1F *hNoETRelRate_zFid = new TH1F("hNoETRelRate_zFid",";R_{i}/#LTR#GT;Counts",40,0.96,1.03);
+	for(int i=0;i<grNoETRelRate_zFid->GetN();i++){
+		grNoETRelRate_zFid->GetPoint(i,grx,gry);
+		hNoETRelRate_zFid->Fill(gry);
+	}
+
+	TH1F *hNoETResid = new TH1F("hNoETResid",";(R_{i}/#LTR#GT)_{z} - (R_{i}/#LTR#GT)_{zFid};Counts",40,-20e-3,30e-3);
+	for(int i=0;i<grNoETResid->GetN();i++){
+		grNoETResid->GetPoint(i,grx,gry);
+		hNoETResid->Fill(gry);
+	}
+
+	hNoETRelRate_zFid->SetLineColor(kRed);
+
+	hNoETRelRate_z->SetLineWidth(2);
+	hNoETRelRate_zFid->SetLineWidth(2);
+
+	//----------------------------------------------
+	double grx0,gry0, grx1,gry1;
+	double gryErr0, gryErr1;
+
+	//double frac = 888.0/1176.0;
+	double frac = 444.0/588.0;
+	//double frac = 438.8/588.0;
+	double sub, subErr, pull;
+
+	TH1F *hNoETPullPlot = new TH1F("hNoETPullPlot",";(R_{i}_{zFid} - (444/588)R_{i})/sqrt(#sigma_{i}_{zFid}^{2} - #sigma_{i}^{2});Counts",40,-10,5);	
+	for(int i=0;i<grNoETRate_z->GetN();i++){
+		grNoETRate_z->GetPoint(i,grx0,gry0);
+		gryErr0 = grNoETRate_z->GetErrorY(i);
+
+		grNoETRate_zFid->GetPoint(i,grx1,gry1);
+		gryErr1 = grNoETRate_zFid->GetErrorY(i);
+
+		sub = gry1 - (frac*gry0);	
+		subErr = sqrt(abs(pow(gryErr1,2) - pow(gryErr0,2)));
+		pull = sub/subErr;
+cout<<pull<<endl;	
+		hNoETPullPlot->Fill(pull);	
+	}
+
+	//----------------------------------------------
 	grResid->SetMarkerStyle(24);
 	grResid->SetMarkerColor(9);
 	grResid->SetLineColor(9);
@@ -203,11 +256,11 @@ int PlotZFidVsZAll(){
 	
 	grRelRate_zFid->SetMarkerColor(kRed);
 	grRelRate_zFid->SetLineColor(kRed);
-	grRelRate_z->SetTitle(";Segment;Relative Rate [mHz]");
+	grRelRate_z->SetTitle(";Segment;R_{i}/#LTR#GT");
 	grResid->SetTitle(";Segment;z-z_{Fid}");
 	grNoETRelRate_zFid->SetMarkerColor(kRed);
 	grNoETRelRate_zFid->SetLineColor(kRed);
-	grNoETRelRate_z->SetTitle(";Segment;Relative Rate [mHz]");
+	grNoETRelRate_z->SetTitle(";Segment;R_{i}/#LTR#GT");
 	grNoETResid->SetTitle(";Segment;z-z_{Fid}");
 
 	grPoLifetime_zFid->SetMarkerColor(kRed);
@@ -228,7 +281,7 @@ int PlotZFidVsZAll(){
 	grETTotEff_zFid->SetLineColor(kRed);
 	grETTotEff_zFid->SetMarkerStyle(20);
 
-	//-----------------------
+	//----------------------------------------------
 	TCanvas *cRate = new TCanvas("cRate","Rate Per Cell",1000,700);
 	TPad *pad1 = new TPad("pad1", "The pad 70% of the height",0.0,0.3,1.0,1.0,0);
         TPad *pad2 = new TPad("pad2", "The pad 30% of the height",0.0,0.0,1.0,0.3,0);
@@ -314,7 +367,7 @@ int PlotZFidVsZAll(){
         grlLifetime->SetFillStyle(3001);
         grlLifetime->SetFillColor(30);
 
-	grPoLifetime_z->SetTitle(";Segment;Po^{215} #tau");
+	grPoLifetime_z->SetTitle(";Segment;^{215}Po #tau");
 
 	TCanvas *cLifetime = new TCanvas("cLifetime","Po Lifetime",1000,400);
 	grPoLifetime_z->Draw("AP");
@@ -364,6 +417,38 @@ int PlotZFidVsZAll(){
 	leg->AddEntry(grTotEff_zFid,"-444 < z < 444 mm","l");
 	leg->Draw();
 	cTotEff->SaveAs(Form("%s/TotEffVsCell_ZvsZFid.pdf",gSystem->Getenv("AD_AC227_PLOTS")));
+
+	//-----------------------
+	TCanvas *cHistRate = new TCanvas("cHistRate","Rate",1);
+	hNoETRelRate_z->Draw("HIST");
+	hNoETRelRate_zFid->Draw("HIST&SAME");
+	leg = new TLegend(0.8,0.85,0.99,0.99);
+	leg->AddEntry(hNoETRelRate_z,"-1000 < z < 1000 mm","l");
+	leg->AddEntry(hNoETRelRate_zFid,"-444 < z < 444 mm","l");
+	leg->Draw();
+	cHistRate->SaveAs(Form("%s/RateHist_ZvsZFid.pdf",gSystem->Getenv("AD_AC227_PLOTS")));
+
+	TCanvas *cHistResid = new TCanvas("cHistResid","Resid",1);
+	gPad->SetRightMargin(0.1);
+	hNoETResid->Draw("HIST");
+	pt = new TPaveText(0.8,0.85,0.99,0.99,"NDCNB");
+	pt->AddText(Form("Mean %f",hNoETResid->GetMean()));
+	pt->Draw();
+	cHistResid->SaveAs(Form("%s/ResidHist_ZvsZFid.pdf",gSystem->Getenv("AD_AC227_PLOTS")));
+	
+	TCanvas *cHistPull = new TCanvas("cHistPull","Pull Plot",1);
+	hNoETPullPlot->Fit("gaus","","",-7,0);
+	//hNoETPullPlot->Fit("gaus","","",-3,3);
+	hNoETPullPlot->Draw("HIST");
+	hNoETPullPlot->GetFunction("gaus")->Draw("same");
+        pt = new TPaveText(0.8,0.8,0.99,0.99,"NDCNB");
+        pt->AddText(Form("#Chi^{2}/NDF   %.2f/%d",hNoETPullPlot->GetFunction("gaus")->GetChisquare(),hNoETPullPlot->GetFunction("gaus")->GetNDF()));
+        pt->AddText(Form("Prob   %.3f",hNoETPullPlot->GetFunction("gaus")->GetProb()));
+        pt->AddText(Form("#mu   %.2f #pm %.2f",hNoETPullPlot->GetFunction("gaus")->GetParameter(1),hNoETPullPlot->GetFunction("gaus")->GetParError(1)));
+        pt->AddText(Form("#sigma   %.2f #pm %.2f",hNoETPullPlot->GetFunction("gaus")->GetParameter(2),hNoETPullPlot->GetFunction("gaus")->GetParError(2)));
+        pt->Draw();
+	cHistPull->SaveAs(Form("%s/PullHist_ZvsZFid_444.pdf",gSystem->Getenv("AD_AC227_PLOTS")));
+
 
 
 	return 0;

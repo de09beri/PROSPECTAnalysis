@@ -20,7 +20,7 @@
 #include "Header.C"
 
 
-void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnStdDev, double delayEnStdDev, double dzStdDev, double zLow, double zHigh, double timeBin, double dtCut, bool boolESmear){
+void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnStdDev, double delayEnStdDev, double dzStdDev, double zLow, double zHigh, double timeBin, double dtCut, bool boolESmear, string outputName){
 	//---------------------------------------------------------------------------------
         //Read in text file with PSD and energy information
         //Creat bin by bin cuts for prompt and delay PSD and energy
@@ -69,7 +69,7 @@ void RnPoVsTime(double promptPSDStdDev, double delayPSDStdDev, double promptEnSt
 	//---------------------------------------------------------------------------------
 	const double TIMEBREAK = timeBin*(3.6e6);	//[ms]
 
-	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerTime.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
+	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerTime_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"RECREATE");
 
 	//---------------------------------------------------------------------------------
 	TH1F *hSelectDt, 	*hBGDt,        *hRnPoDt;

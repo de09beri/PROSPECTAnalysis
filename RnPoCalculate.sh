@@ -23,7 +23,7 @@ timeBin=47.5
 
 boolESmear=false
 
-outputName=35Sigma
+output=Top
 
 #==============================================
 # Make Class
@@ -33,7 +33,7 @@ if [ $1 -eq 1 ]
 then
 
 root -l -b <<EOF
-.L Calculate/MakeAcTreeClass.C+
+.L Calculate/MakeAcTreeClass.C
 MakeAcTreeClass()
 .q
 EOF
@@ -49,7 +49,7 @@ if [ $2 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/CutsPerCell.C+
+.L Calculate/CutsPerCell.C
 CutsPerCell($dtCut)
 .q
 EOF
@@ -62,9 +62,11 @@ echo ========= Running RnPoVsCell =========
 
 if [ $3 -eq 1 ]
 then
-root -l -b <<EOF 
-.L Calculate/RnPoVsCell.C+
-RnPoVsCell($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $dtCut, $boolESmear, $outputName)
+root -l -b <<EOF
+string outputName = "$output"
+
+.L Calculate/RnPoVsCell.C
+RnPoVsCell($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $dtCut, $boolESmear, outputName)
 .q
 EOF
 
@@ -78,8 +80,10 @@ if [ $4 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/RnPoVsCell_Calculations.C+
-RnPoVsCell_Calc($outputName)
+string outputName = "$output"
+
+.L Calculate/RnPoVsCell_Calculations.C
+RnPoVsCell_Calc(outputName)
 .q
 EOF
 
@@ -93,7 +97,7 @@ if [ $5 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/CutsVsTime.C+
+.L Calculate/CutsVsTime.C
 CutsVsTime($dtCut, $timeBin)
 .q
 EOF
@@ -108,8 +112,9 @@ if [ $6 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/RnPoVsTime.C+
-RnPoVsTime($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $timeBin, $dtCut, $boolESmear)
+string outputName = "$output"
+.L Calculate/RnPoVsTime.C
+RnPoVsTime($promptPSDStdDev, $delayPSDStdDev, $promptEnStdDev, $delayEnStdDev, $dzStdDev, $zLow, $zHigh, $timeBin, $dtCut, $boolESmear, outputName)
 .q
 EOF
 
@@ -123,8 +128,9 @@ if [ $7 -eq 1 ]
 then
 
 root -l -b <<EOF 
-.L Calculate/RnPoVsTime_Calculations.C+
-RnPoVsTime_Calc()
+string outputName = "$output"
+.L Calculate/RnPoVsTime_Calculations.C
+RnPoVsTime_Calc(outputName)
 .q
 EOF
 

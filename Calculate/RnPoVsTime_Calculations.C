@@ -20,9 +20,9 @@
 
 #include "Header.C"
 
-void RnPoVsTime_Calc(){
+void RnPoVsTime_Calc(string outputName){
 	//---------------------------------------------------------------------------------
-	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerTime.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"UPDATE");
+	TFile *histFile = new TFile(Form("%s/Ac227_HistsPerTime_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"UPDATE");
 
 	vector<double> *vT;
 	histFile->GetObject("vTimestamp",vT);
@@ -437,7 +437,7 @@ void RnPoVsTime_Calc(){
 
 	//---------------------------------------------------------------------------------
 	//Write TGraphs to file
-	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerTime.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS")),"RECREATE");
+	TFile *graphFile = new TFile(Form("%s/Ac227_GraphsPerTime_%s.root",gSystem->Getenv("AD_AC227ANALYSIS_RESULTS"),outputName.c_str()),"RECREATE");
 	
 	grRate->Write("grRate");
 	grTotEff->Write("grTotEff");	
